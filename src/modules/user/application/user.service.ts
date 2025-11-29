@@ -148,6 +148,9 @@ async logout(correo: string): Promise<User> {
 async deleteAccount(correo: string): Promise<User>{
   throw new Error("Method not implemented.");
 }
+async findByEmail(email: string): Promise<User | null>{
+  return this.userRepository.findByEmail(email);
+}
 
 
 }
