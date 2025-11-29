@@ -74,7 +74,7 @@ describe("HU04 – Eliminar cuenta de usuario (ATDD)", () => {
     const stillExists = await service.findByEmail(email);
     expect(stillExists).not.toBeNull();
 
-    await service.deleteByEmail(email); // limpiar
+    await service.deleteByEmail(email); 
   });
 
 });
