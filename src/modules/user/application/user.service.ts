@@ -115,5 +115,9 @@ async forceLogout(correo: string): Promise<void> {
   user.sesion_activa = false;
   await this.userRepository.update(user);
 }
+async logout(correo: string): Promise<User>
+  {
+    throw new Error("Method not implemented.");
+  }
 
 }
