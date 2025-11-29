@@ -145,5 +145,9 @@ async logout(correo: string): Promise<User> {
 
   return user;
 }
+async deleteAccount(correo: string): Promise<User>{
+  throw new Error("Method not implemented.");
+}
+
 
 }
