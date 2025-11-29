@@ -66,5 +66,8 @@ async register(data: any): Promise<User> {
   async deleteByEmail(email: string): Promise<void> {
   return this.userRepository.deleteByEmail(email);
 }
+async login(correo: string, contraseña: string): Promise<User> {
+  throw new Error("NotImplementedException");
+}
 
 }
