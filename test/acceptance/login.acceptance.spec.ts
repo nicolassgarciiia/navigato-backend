@@ -31,6 +31,7 @@ describe("HU02 – Inicio de sesión (ATDD)", () => {
       repetirContraseña: "ValidPass1!",
       aceptaPoliticaPrivacidad: true,
     });
+    await service.forceLogout(email);
 
     const result = await service.login(email, "ValidPass1!");
 
@@ -65,6 +66,7 @@ describe("HU02 – Inicio de sesión (ATDD)", () => {
       repetirContraseña: "ValidPass1!",
       aceptaPoliticaPrivacidad: true,
     });
+    await service.forceLogout(email);
 
     await expect(service.login(email, "Incorrecta1!"))
       .rejects.toThrow("InvalidCredentialsError");
@@ -106,6 +108,7 @@ describe("HU02 – Inicio de sesión (ATDD)", () => {
       repetirContraseña: "ValidPass1!",
       aceptaPoliticaPrivacidad: true,
     });
+    await service.forceLogout(email);
 
     await service.login(email, "ValidPass1!");
 
