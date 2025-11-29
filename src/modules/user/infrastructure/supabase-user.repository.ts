@@ -15,18 +15,61 @@ export class SupabaseUserRepository implements UserRepository {
   }
 
   async save(user: User): Promise<void> {
-    throw new Error("Not implemented Supabase.save()");
+    const { error } = await this.supabase
+      .from("usuarios")
+      .insert({
+        id: user.id,
+        nombre: user.nombre,
+        apellidos: user.apellidos,
+        correo: user.correo,
+        contraseña_hash: user.contraseña_hash,
+        sesion_activa: user.sesion_activa,
+        listaLugares: user.listaLugares,
+        listaVehiculos: user.listaVehiculos,
+        listaRutasGuardadas: user.listaRutasGuardadas,
+        preferencias: user.preferencias
+      });
+
+    if (error) {
+      throw new Error("DatabaseError: " + error.message);
+    }
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    throw new Error("Not implemented Supabase.findByEmail()");
+    const { data, error } = await this.supabase
+      .from("usuarios")
+      .select("*")
+      .eq("correo", email)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error("DatabaseError: " + error.message);
+    }
+
+    if (!data) return null;
+    return new User(data);
   }
 
   async update(user: User): Promise<void> {
-    throw new Error("Not implemented Supabase.update()");
+    await this.supabase
+      .from("usuarios")
+      .update({
+        nombre: user.nombre,
+        apellidos: user.apellidos,
+        contraseña_hash: user.contraseña_hash,
+        sesion_activa: user.sesion_activa,
+        listaLugares: user.listaLugares,
+        listaVehiculos: user.listaVehiculos,
+        listaRutasGuardadas: user.listaRutasGuardadas,
+        preferencias: user.preferencias
+      })
+      .eq("correo", user.correo);
   }
 
   async deleteByEmail(email: string): Promise<void> {
-    throw new Error("Not implemented Supabase.deleteByEmail()");
+    await this.supabase
+      .from("usuarios")
+      .delete()
+      .eq("correo", email);
   }
 }

@@ -1,6 +1,9 @@
 import { Test } from "@nestjs/testing";
 import { UserModule } from "../../src/modules/user/user.module";
 import { UserService } from "../../src/modules/user/application/user.service";
+import * as dotenv from "dotenv";
+dotenv.config();
+
 
 describe("HU01 – Registro de usuario (ATDD)", () => {
   let service: UserService;
@@ -19,7 +22,6 @@ describe("HU01 – Registro de usuario (ATDD)", () => {
   // ============================
   test("HU01_E01 – Registro válido", async () => {
     const email = "prueba_hu01_valido@test.com";
-
     const result = await service.register({
       nombre: "Prueba",
       apellidos: "García Fernández",
@@ -41,7 +43,6 @@ describe("HU01 – Registro de usuario (ATDD)", () => {
   // ======================================
   test("HU01_E02 – Email ya registrado", async () => {
     const email = "prueba_hu01_existente@test.com";
-
     // Crear primero un usuario
     await service.register({
       nombre: "Prueba",
@@ -63,5 +64,6 @@ describe("HU01 – Registro de usuario (ATDD)", () => {
         aceptaPoliticaPrivacidad: true,
       })
     ).rejects.toThrow("EmailAlreadyRegisteredError");
+    await service.deleteByEmail(email);
   });
 });
