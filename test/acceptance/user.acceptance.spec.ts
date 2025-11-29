@@ -66,4 +66,87 @@ describe("HU01 – Registro de usuario (ATDD)", () => {
     ).rejects.toThrow("EmailAlreadyRegisteredError");
     await service.deleteByEmail(email);
   });
+  // ======================================
+  // HU01_E03 – Contraseña inválida
+  // ======================================
+  test("HU01_E03 – Contraseña inválida", async () => {
+    const email = `hu01e03@test.com`;
+
+    await expect(
+     service.register({
+       nombre: "Prueba",
+        apellidos: "García Fernández",
+        correo: email,
+        contraseña: "Ab1!",
+        repetirContraseña: "Ab1!",
+        aceptaPoliticaPrivacidad: true,
+    })
+  ).rejects.toThrow("InvalidPasswordError");
+});
+  test("HU01_E04 – Email con formato inválido", async () => {
+    const email = "email-malo-sin-arroba";
+
+    await expect(
+      service.register({
+        nombre: "Prueba",
+        apellidos: "García Fernández",
+        correo: email,
+        contraseña: "Prueba-34!",
+        repetirContraseña: "Prueba-34!",
+        aceptaPoliticaPrivacidad: true,
+      })
+    ).rejects.toThrow("InvalidEmailFormatError");
+  });
+    // ======================================
+  // HU01_E05 – Contraseñas no coinciden
+  // ======================================
+  test("HU01_E05 – Contraseñas no coinciden", async () => {
+    const email = `hu01e05@test.com`;
+
+    await expect(
+      service.register({
+        nombre: "Prueba",
+        apellidos: "García Fernández",
+        correo: email,
+        contraseña: "Prueba-34!",
+        repetirContraseña: "Otra-35!",
+        aceptaPoliticaPrivacidad: true,
+      })
+    ).rejects.toThrow("PasswordsDoNotMatchError");
+  });
+    // ======================================
+  // HU01_E06 – Datos personales incompletos
+  // ======================================
+  test("HU01_E06 – Datos personales incompletos", async () => {
+    const email = `hu01e06@test.com`;
+
+    await expect(
+      service.register({
+        nombre: "",
+        apellidos: "García Fernández",
+        correo: email,
+        contraseña: "Prueba-34!",
+        repetirContraseña: "Prueba-34!",
+        aceptaPoliticaPrivacidad: true,
+      })
+    ).rejects.toThrow("InvalidPersonalInformationError");
+  });
+    // ======================================
+  // HU01_E07 – Política de privacidad no aceptada
+  // ======================================
+  test("HU01_E07 – Política no aceptada", async () => {
+    const email = `hu01e07@test.com`;
+
+    await expect(
+      service.register({
+        nombre: "Prueba",
+        apellidos: "García Fernández",
+        correo: email,
+        contraseña: "Prueba-34!",
+        repetirContraseña: "Prueba-34!",
+        aceptaPoliticaPrivacidad: false,
+      })
+    ).rejects.toThrow("PrivacyPolicyNotAcceptedError");
+  });
+
 });

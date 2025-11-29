@@ -26,6 +26,21 @@ async register(data: any): Promise<User> {
   if (existed) {
     throw new Error("EmailAlreadyRegisteredError");
   }
+  // Validación de contraseña (HU01_E05)
+  const password = data.contraseña;
+
+  const passwordRegex =
+  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_])[A-Za-z\d\W_]{8,16}$/;
+
+  if (!passwordRegex.test(password)) {
+  throw new Error("InvalidPasswordError");
+  }
+    const emailRegex =
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if (!emailRegex.test(data.correo)) {
+    throw new Error("InvalidEmailFormatError");
+  }
 
   const id = randomUUID();
   const contraseña_hash = await bcrypt.hash(data.contraseña, 10);
