@@ -32,10 +32,6 @@ describe("HU03 – Cerrar sesión (ATDD)", () => {
       aceptaPoliticaPrivacidad: true,
     });
 
-    // Login para asegurar sesión activa
-    await service.forceLogout(email); // este método ya lo tienes
-    await service.login(email, "ValidPass1!");
-
     // Logout
     const result = await service.logout(email);
 

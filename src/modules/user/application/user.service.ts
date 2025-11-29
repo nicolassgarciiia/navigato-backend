@@ -115,9 +115,35 @@ async forceLogout(correo: string): Promise<void> {
   user.sesion_activa = false;
   await this.userRepository.update(user);
 }
-async logout(correo: string): Promise<User>
-  {
-    throw new Error("Method not implemented.");
+async logout(correo: string): Promise<User> {
+
+  // Buscar el usuario
+  let user: User | null;
+  try {
+    user = await this.userRepository.findByEmail(correo);
+  } catch {
+    throw new Error("UnexpectedDatabaseError");
   }
+
+  if (!user) {
+    throw new Error("UserNotFoundError");
+  }
+
+  // HU03_E02 – No había sesión activa
+  if (!user.sesion_activa) {
+    throw new Error("NoUserAuthenticatedError");
+  }
+
+  // HU03_E01 – Desactivar sesión
+  user.sesion_activa = false;
+
+  try {
+    await this.userRepository.update(user);
+  } catch {
+    throw new Error("UnexpectedDatabaseError");
+  }
+
+  return user;
+}
 
 }
