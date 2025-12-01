@@ -145,5 +145,45 @@ async logout(correo: string): Promise<User> {
 
   return user;
 }
+async deleteAccount(correo: string): Promise<User>{
+  let user: User | null;
+  try {
+    user = await this.userRepository.findByEmail(correo);
+  } catch {
+    // HU04_E03 – Error inesperado en la BD
+    throw new Error("UnexpectedDatabaseError");
+  }
+
+  if (!user) {
+    throw new Error("AuthenticationRequiredError");
+  }
+
+  if (!user.sesion_activa) {
+    throw new Error("AuthenticationRequiredError");
+  }
+
+  user.listaLugares = [];
+  user.listaVehiculos = [];
+  user.listaRutasGuardadas = [];
+  user.preferencias = {};
+  user.sesion_activa = false;
+
+  try {
+    await this.userRepository.update(user);
+  } catch {
+    throw new Error("UnexpectedDatabaseError");
+  }
+
+  try {
+    await this.userRepository.deleteByEmail(correo);
+  } catch {
+    throw new Error("UnexpectedDatabaseError");
+  }
+  return user;
+}
+async findByEmail(email: string): Promise<User | null>{
+  return this.userRepository.findByEmail(email);
+}
+
 
 }
