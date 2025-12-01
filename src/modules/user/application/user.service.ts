@@ -66,5 +66,54 @@ async register(data: any): Promise<User> {
   async deleteByEmail(email: string): Promise<void> {
   return this.userRepository.deleteByEmail(email);
 }
+async login(correo: string, contraseña: string): Promise<User> {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if (!emailRegex.test(correo)) {
+    throw new Error("InvalidEmailFormatError");
+  }
+
+  if (!contraseña || contraseña.trim() === "") {
+    throw new Error("InvalidCredentialsError");
+  }
+
+  let user: User | null;
+  try {
+    user = await this.userRepository.findByEmail(correo);
+  } catch {
+    // HU02_E06 – error inesperado de BD
+    throw new Error("UnexpectedDatabaseError");
+  }
+
+  if (!user) {
+    throw new Error("UserNotFoundError");
+  }
+
+  if (user.sesion_activa) {
+    throw new Error("SessionAlreadyActiveError");
+  }
+
+  
+  const correctPassword = await bcrypt.compare(contraseña, user.contraseña_hash);
+
+  if (!correctPassword) {
+    throw new Error("InvalidCredentialsError");
+  }
+
+  user.sesion_activa = true;
+  try {
+    await this.userRepository.update(user);
+  } catch {
+    throw new Error("UnexpectedDatabaseError");
+  }
+  return user;
+}
+async forceLogout(correo: string): Promise<void> {
+  const user = await this.userRepository.findByEmail(correo);
+  if (!user) return;
+
+  user.sesion_activa = false;
+  await this.userRepository.update(user);
+}
 
 }
