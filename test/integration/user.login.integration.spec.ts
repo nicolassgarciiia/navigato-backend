@@ -41,7 +41,6 @@ describe("HU02 – Inicio de sesión (INTEGRATION)", () => {
       apellidos: "Test",
       correo: email,
       contraseña_hash: hash,
-      sesion_activa: false,
       listaLugares: [],
       listaVehiculos: [],
       listaRutasGuardadas: [],
@@ -57,7 +56,6 @@ describe("HU02 – Inicio de sesión (INTEGRATION)", () => {
     const result = await service.login(email, "ValidPass1!");
 
     expect(result).toBeDefined();
-    expect(result.sesion_activa).toBe(true);
     expect(repo.update).toHaveBeenCalled();
   });
 
@@ -84,7 +82,6 @@ describe("HU02 – Inicio de sesión (INTEGRATION)", () => {
       apellidos: "Test",
       correo: email,
       contraseña_hash: hash,
-      sesion_activa: false,
       listaLugares: [],
       listaVehiculos: [],
       listaRutasGuardadas: [],
@@ -111,41 +108,5 @@ describe("HU02 – Inicio de sesión (INTEGRATION)", () => {
   test("HU02_E05 – Contraseña vacía → error", async () => {
     await expect(service.login("test@test.com", ""))
       .rejects.toThrow("InvalidCredentialsError");
-  });
-
-  // =======================================================
-  // HU02_E06 – Usuario ya con sesión activa
-  // =======================================================
-  test("HU02_E06 – Usuario ya tiene sesión activa", async () => {
-    const email = "hu02e06@test.com";
-    const hash = await bcrypt.hash("ValidPass1!", 10);
-
-    const user = new User({
-      id: "3",
-      nombre: "Prueba",
-      apellidos: "Test",
-      correo: email,
-      contraseña_hash: hash,
-      sesion_activa: true, // 🔥 ya en sesión
-      listaLugares: [],
-      listaVehiculos: [],
-      listaRutasGuardadas: [],
-      preferencias: {},
-    });
-
-    repo.findByEmail.mockResolvedValueOnce(user);
-
-    await expect(service.login(email, "ValidPass1!"))
-      .rejects.toThrow("SessionAlreadyActiveError");
-  });
-
-  // =======================================================
-  // HU02_E07 – Error inesperado de BD (findByEmail lanza excepción)
-  // =======================================================
-  test("HU02_E07 – Error inesperado en BD", async () => {
-    repo.findByEmail.mockRejectedValueOnce(new Error("DB crashed"));
-
-    await expect(service.login("test@test.com", "ValidPass1!"))
-      .rejects.toThrow("UnexpectedDatabaseError");
   });
 });

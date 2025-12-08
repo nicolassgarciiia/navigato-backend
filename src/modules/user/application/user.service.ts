@@ -51,7 +51,6 @@ async register(data: any): Promise<User> {
     apellidos: data.apellidos,
     correo: data.correo,
     contraseña_hash,
-    sesion_activa: true,
     listaLugares: [],
     listaVehiculos: [],
     listaRutasGuardadas: [],
@@ -89,9 +88,6 @@ async login(correo: string, contraseña: string): Promise<User> {
     throw new Error("UserNotFoundError");
   }
 
-  if (user.sesion_activa) {
-    throw new Error("SessionAlreadyActiveError");
-  }
 
   
   const correctPassword = await bcrypt.compare(contraseña, user.contraseña_hash);
@@ -100,20 +96,12 @@ async login(correo: string, contraseña: string): Promise<User> {
     throw new Error("InvalidCredentialsError");
   }
 
-  user.sesion_activa = true;
   try {
     await this.userRepository.update(user);
   } catch {
     throw new Error("UnexpectedDatabaseError");
   }
   return user;
-}
-async forceLogout(correo: string): Promise<void> {
-  const user = await this.userRepository.findByEmail(correo);
-  if (!user) return;
-
-  user.sesion_activa = false;
-  await this.userRepository.update(user);
 }
 
 }
