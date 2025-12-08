@@ -51,7 +51,6 @@ async register(data: any): Promise<User> {
     apellidos: data.apellidos,
     correo: data.correo,
     contraseña_hash,
-    sesion_activa: true,
     listaLugares: [],
     listaVehiculos: [],
     listaRutasGuardadas: [],

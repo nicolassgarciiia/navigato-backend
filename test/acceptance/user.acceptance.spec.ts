@@ -33,7 +33,6 @@ describe("HU01 – Registro de usuario (ATDD)", () => {
 
     expect(result).toBeDefined();
     expect(result.correo).toBe(email);
-    expect(result.sesion_activa).toBe(true);
 
     await service.deleteByEmail(email);
   });

@@ -4,7 +4,6 @@ export class User {
   apellidos: string;
   correo: string;
   contraseña_hash: string;
-  sesion_activa: boolean;
   listaLugares: any[];
   listaVehiculos: any[];
   listaRutasGuardadas: any[];
