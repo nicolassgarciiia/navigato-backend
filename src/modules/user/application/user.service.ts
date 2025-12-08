@@ -96,11 +96,6 @@ async login(correo: string, contraseña: string): Promise<User> {
     throw new Error("InvalidCredentialsError");
   }
 
-  try {
-    await this.userRepository.update(user);
-  } catch {
-    throw new Error("UnexpectedDatabaseError");
-  }
   return user;
 }
 

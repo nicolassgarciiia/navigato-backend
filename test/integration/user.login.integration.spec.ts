@@ -32,32 +32,34 @@ describe("HU02 – Inicio de sesión (INTEGRATION)", () => {
   // HU02_E01 – Inicio de sesión correcto
   // =======================================================
   test("HU02_E01 – Credenciales correctas → inicio correcto", async () => {
-    const email = "hu02e01@test.com";
-    const hash = await bcrypt.hash("ValidPass1!", 10);
+  const email = "hu02e01@test.com";
+  const hash = await bcrypt.hash("ValidPass1!", 10);
 
-    const user = new User({
-      id: "1",
-      nombre: "Prueba",
-      apellidos: "Test",
-      correo: email,
-      contraseña_hash: hash,
-      listaLugares: [],
-      listaVehiculos: [],
-      listaRutasGuardadas: [],
-      preferencias: {},
-    });
-
-    // El usuario existe y tiene sesión inactiva
-    repo.findByEmail.mockResolvedValueOnce(user);
-
-    // update() simplemente resuelve
-    repo.update.mockResolvedValue(undefined);
-
-    const result = await service.login(email, "ValidPass1!");
-
-    expect(result).toBeDefined();
-    expect(repo.update).toHaveBeenCalled();
+  const user = new User({
+    id: "1",
+    nombre: "Prueba",
+    apellidos: "Test",
+    correo: email,
+    contraseña_hash: hash,
+    listaLugares: [],
+    listaVehiculos: [],
+    listaRutasGuardadas: [],
+    preferencias: {},
   });
+
+  // El usuario existe
+  repo.findByEmail.mockResolvedValueOnce(user);
+
+  const result = await service.login(email, "ValidPass1!");
+
+  expect(result).toBeDefined();
+  expect(result.correo).toBe(email);
+
+  expect(repo.findByEmail).toHaveBeenCalledWith(email);
+
+  expect(repo.update).not.toHaveBeenCalled();
+});
+
 
   // =======================================================
   // HU02_E02 – Email no existe en el sistema
