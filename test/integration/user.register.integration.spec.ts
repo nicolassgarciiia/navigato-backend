@@ -42,7 +42,6 @@ describe("HU01 – Registro de usuario (INTEGRATION)", () => {
         apellidos: "García Fernández",
         correo: email,
         contraseña_hash: "xxx",
-        sesion_activa: true,
         listaLugares: [],
         listaVehiculos: [],
         listaRutasGuardadas: [],
@@ -62,7 +61,6 @@ describe("HU01 – Registro de usuario (INTEGRATION)", () => {
     expect(repo.findByEmail).toHaveBeenCalledWith(email);
     expect(repo.save).toHaveBeenCalled();
     expect(result.correo).toBe(email);
-    expect(result.sesion_activa).toBe(true);
   });
 
   // =====================================================
