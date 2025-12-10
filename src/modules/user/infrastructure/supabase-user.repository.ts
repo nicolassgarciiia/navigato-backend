@@ -10,7 +10,7 @@ export class SupabaseUserRepository implements UserRepository {
   constructor() {
     this.supabase = createClient(
       process.env.SUPABASE_URL!,
-      process.env.SUPABASE_KEY!
+      process.env.SUPABASE_SERVICE_ROLE!
     );
   }
 
@@ -22,12 +22,7 @@ export class SupabaseUserRepository implements UserRepository {
         nombre: user.nombre,
         apellidos: user.apellidos,
         correo: user.correo,
-        contraseña_hash: user.contraseña_hash,
-        sesion_activa: user.sesion_activa,
-        listaLugares: user.listaLugares,
-        listaVehiculos: user.listaVehiculos,
-        listaRutasGuardadas: user.listaRutasGuardadas,
-        preferencias: user.preferencias
+        contrasenaHash: user.contrasenaHash
       });
 
     if (error) {
@@ -42,34 +37,56 @@ export class SupabaseUserRepository implements UserRepository {
       .eq("correo", email)
       .maybeSingle();
 
-    if (error) {
-      throw new Error("DatabaseError: " + error.message);
-    }
-
+    if (error) throw new Error("DatabaseError: " + error.message);
     if (!data) return null;
-    return new User(data);
+
+    return new User({
+      id: data.id,
+      nombre: data.nombre,
+      apellidos: data.apellidos,
+      correo: data.correo,
+      contrasenaHash: data.contrasenaHash
+    });
+  }
+
+  async findById(id: string): Promise<User | null> {
+    const { data, error } = await this.supabase
+      .from("usuarios")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (error) throw new Error("DatabaseError: " + error.message);
+    if (!data) return null;
+
+    return new User({
+      id: data.id,
+      nombre: data.nombre,
+      apellidos: data.apellidos,
+      correo: data.correo,
+      contrasenaHash: data.contrasenaHash
+    });
   }
 
   async update(user: User): Promise<void> {
-    await this.supabase
+    const { error } = await this.supabase
       .from("usuarios")
       .update({
         nombre: user.nombre,
         apellidos: user.apellidos,
-        contraseña_hash: user.contraseña_hash,
-        sesion_activa: user.sesion_activa,
-        listaLugares: user.listaLugares,
-        listaVehiculos: user.listaVehiculos,
-        listaRutasGuardadas: user.listaRutasGuardadas,
-        preferencias: user.preferencias
+        password_hash: user.contrasenaHash
       })
       .eq("correo", user.correo);
+
+    if (error) throw new Error("DatabaseError: " + error.message);
   }
 
   async deleteByEmail(email: string): Promise<void> {
-    await this.supabase
+    const { error } = await this.supabase
       .from("usuarios")
       .delete()
       .eq("correo", email);
+
+    if (error) throw new Error("DatabaseError: " + error.message);
   }
 }

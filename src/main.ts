@@ -4,9 +4,8 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // 👇 AÑADE ESTO
   app.enableCors({
-    origin: "*",       // permite peticiones desde cualquier origen
+    origin: "*",      
     methods: "GET,POST,PUT,DELETE",
     credentials: false
   });

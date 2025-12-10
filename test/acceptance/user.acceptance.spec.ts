@@ -1,12 +1,15 @@
 import { Test } from "@nestjs/testing";
 import { UserModule } from "../../src/modules/user/user.module";
 import { UserService } from "../../src/modules/user/application/user.service";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import * as dotenv from "dotenv";
 dotenv.config();
 
 
 describe("HU01 – Registro de usuario (ATDD)", () => {
   let service: UserService;
+  // 2. AÑADIR ESTA VARIABLE
+  let supabaseAdmin: SupabaseClient; 
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -14,6 +17,13 @@ describe("HU01 – Registro de usuario (ATDD)", () => {
     }).compile();
 
     service = moduleRef.get(UserService);
+
+    // 3. INICIALIZAR EL CLIENTE (Añadir esto)
+    // Usamos SERVICE_ROLE para poder consultar usuarios sin iniciar sesión
+    supabaseAdmin = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE!
+    );
   });
 
 
@@ -33,7 +43,15 @@ describe("HU01 – Registro de usuario (ATDD)", () => {
 
     expect(result).toBeDefined();
     expect(result.correo).toBe(email);
-    expect(result.sesion_activa).toBe(true);
+    // 3. VERIFICACIÓN REAL 
+    const { data } = await supabaseAdmin.auth.admin.listUsers();
+    const userInSupabase = data.users.find((u) => u.email === email);
+    
+    expect(userInSupabase).toBeDefined(); // Confirma que se creó en la nube
+    expect(userInSupabase?.id).toBe(result.id); // Confirma que los IDs están sincronizados
+
+    // Teardown (Limpieza)
+    await service.deleteByEmail(email);
 
     await service.deleteByEmail(email);
   });

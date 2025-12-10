@@ -3,12 +3,7 @@ export class User {
   nombre: string;
   apellidos: string;
   correo: string;
-  contraseña_hash: string;
-  sesion_activa: boolean;
-  listaLugares: any[];
-  listaVehiculos: any[];
-  listaRutasGuardadas: any[];
-  preferencias: any;
+  contrasenaHash: string;
 
   constructor(props: Partial<User>) {
     Object.assign(this, props);

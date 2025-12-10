@@ -31,13 +31,21 @@ describe("HU02 – Inicio de sesión (ATDD)", () => {
       repetirContraseña: "ValidPass1!",
       aceptaPoliticaPrivacidad: true,
     });
-    await service.forceLogout(email);
+    
+    // Ya no es necesario forceLogout porque Supabase permite múltiples sesiones
+    // await service.forceLogout(email); 
 
     const result = await service.login(email, "ValidPass1!");
 
     expect(result).toBeDefined();
-    expect(result.correo).toBe(email);
-    expect(result.sesion_activa).toBe(true);
+    // Ahora el usuario está dentro de result.user
+    expect(result.user.correo).toBe(email);
+    // VERIFICACIÓN CLAVE: Tenemos token
+    expect(result.access_token).toBeDefined();
+    expect(typeof result.access_token).toBe("string");
+
+    // Eliminamos verificación de base de datos
+    // expect(result.sesion_activa).toBe(true); 
 
     await service.deleteByEmail(email);
   });
@@ -47,7 +55,7 @@ describe("HU02 – Inicio de sesión (ATDD)", () => {
   // =======================================================
   test("HU02_E02 – Email inexistente → error", async () => {
     const email = `hu02e02@test.com`;
-
+    // Este sigue igual
     await expect(service.login(email, "ValidPass1!"))
       .rejects.toThrow("UserNotFoundError");
   });
@@ -66,7 +74,6 @@ describe("HU02 – Inicio de sesión (ATDD)", () => {
       repetirContraseña: "ValidPass1!",
       aceptaPoliticaPrivacidad: true,
     });
-    await service.forceLogout(email);
 
     await expect(service.login(email, "Incorrecta1!"))
       .rejects.toThrow("InvalidCredentialsError");
@@ -75,7 +82,7 @@ describe("HU02 – Inicio de sesión (ATDD)", () => {
   });
 
   // =======================================================
-  // HU02_E04 – Email con formato no válido
+  // HU02_E04 – Email con formato no válido (Sigue igual)
   // =======================================================
   test("HU02_E04 – Formato de email inválido", async () => {
     await expect(
@@ -84,39 +91,12 @@ describe("HU02 – Inicio de sesión (ATDD)", () => {
   });
 
   // =======================================================
-  // HU02_E05 – Contraseña vacía o no válida
+  // HU02_E05 – Contraseña vacía (Sigue igual)
   // =======================================================
   test("HU02_E05 – Contraseña vacía → error", async () => {
     const email = `hu02e05_${crypto.randomUUID()}@test.com`;
-
     await expect(service.login(email, ""))
       .rejects.toThrow("InvalidCredentialsError");
-  });
-
-
-  // =======================================================
-  // HU02_E06 – Usuario ya con sesión activa
-  // =======================================================
-  test("HU02_E06 – Usuario ya tiene sesión activa", async () => {
-    const email = `hu02e07@test.com`;
-
-    const user = await service.register({
-      nombre: "Prueba",
-      apellidos: "Test",
-      correo: email,
-      contraseña: "ValidPass1!",
-      repetirContraseña: "ValidPass1!",
-      aceptaPoliticaPrivacidad: true,
-    });
-    await service.forceLogout(email);
-
-    await service.login(email, "ValidPass1!");
-
-    // segundo login → ya está en sesión
-    await expect(service.login(email, "ValidPass1!"))
-      .rejects.toThrow("SessionAlreadyActiveError");
-
-    await service.deleteByEmail(email);
   });
 
 });

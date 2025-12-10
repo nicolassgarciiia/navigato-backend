@@ -1,189 +1,195 @@
 import { Injectable } from "@nestjs/common";
 import { UserRepository } from "../domain/user.repository";
-import { randomUUID } from "crypto";
 import { User } from "../domain/user.entity";
 import * as bcrypt from "bcryptjs";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
 @Injectable()
 export class UserService {
-  constructor(private userRepository: UserRepository) {}
+  private supabaseClient: SupabaseClient;   
+  private supabaseAdmin: SupabaseClient;   
 
-async register(data: any): Promise<User> {
+  constructor(private userRepository: UserRepository) {
+    // Cliente para login / registro (anon key)
+    this.supabaseClient = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_ANON_KEY!
+    );
 
-  if (!data.nombre || !data.apellidos || !data.correo) {
-    throw new Error("InvalidPersonalInformationError");
+    // Cliente administrador para borrar usuarios
+    this.supabaseAdmin = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE!
+    );
   }
 
-  if (!data.aceptaPoliticaPrivacidad) {
-    throw new Error("PrivacyPolicyNotAcceptedError");
+  // ======================================================
+  // HU01 – Registro
+  // ======================================================
+  async register(data: any): Promise<User> {
+    if (!data.nombre || !data.apellidos || !data.correo)
+      throw new Error("InvalidPersonalInformationError");
+
+    if (!data.aceptaPoliticaPrivacidad)
+      throw new Error("PrivacyPolicyNotAcceptedError");
+
+    if (data.contraseña !== data.repetirContraseña)
+      throw new Error("PasswordsDoNotMatchError");
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(data.correo))
+      throw new Error("InvalidEmailFormatError");
+
+    const passwordRegex =
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_])[A-Za-z\d\W_]{8,16}$/;
+
+    if (!passwordRegex.test(data.contraseña))
+      throw new Error("InvalidPasswordError");
+
+    const existed = await this.userRepository.findByEmail(data.correo);
+    if (existed) throw new Error("EmailAlreadyRegisteredError");
+
+    // Registro en Supabase Auth (anon key)
+    const { data: authData, error: authError } =
+      await this.supabaseClient.auth.signUp({
+        email: data.correo,
+        password: data.contraseña,
+        options: {
+          data: {
+            nombre: data.nombre,
+            apellidos: data.apellidos,
+          },
+        },
+      });
+
+    if (authError) {
+      // Caso: email ya existe en supabase auth
+      if (authError.message.toLowerCase().includes("exists")) {
+        throw new Error("EmailAlreadyRegisteredError");
+      }
+      throw new Error("AuthRegisterError");
+    }
+
+    if (!authData.user) throw new Error("AuthRegisterError");
+
+    const hash = await bcrypt.hash(data.contraseña, 10);
+
+    const user = new User({
+      id: authData.user.id,
+      nombre: data.nombre,
+      apellidos: data.apellidos,
+      correo: data.correo,
+      contrasenaHash: hash,
+    });
+
+    await this.userRepository.save(user);
+    return user;
   }
 
-  if (data.contraseña !== data.repetirContraseña) {
-    throw new Error("PasswordsDoNotMatchError");
+  // ======================================================
+  // HU02 – Inicio de sesión
+  // ======================================================
+  async login(correo: string, contraseña: string) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(correo))
+      throw new Error("InvalidEmailFormatError");
+
+    if (!contraseña || contraseña.trim() === "")
+      throw new Error("InvalidCredentialsError");
+
+    const user = await this.userRepository.findByEmail(correo);
+    if (!user) throw new Error("UserNotFoundError");
+
+    const { data, error } =
+      await this.supabaseClient.auth.signInWithPassword({
+        email: correo,
+        password: contraseña,
+      });
+
+    if (error) {
+      // 1. SI LA CONTRASEÑA ESTÁ MAL
+      if (error.message.includes("Invalid login credentials")) {
+        throw new Error("InvalidCredentialsError");
+      }
+      
+      // 2. SI EL EMAIL NO ESTÁ CONFIRMADO (NUEVO)
+      if (error.message.includes("Email not confirmed")) {
+        throw new Error("EmailNotConfirmedError");
+      }
+      // 3. CUALQUIER OTRO ERROR
+      throw new Error("AuthLoginError");
+    }
+
+    return {
+      user,
+      access_token: data.session.access_token,
+    };
   }
 
-  const existed = await this.userRepository.findByEmail(data.correo);
-  if (existed) {
-    throw new Error("EmailAlreadyRegisteredError");
-  }
-  // Validación de contraseña (HU01_E05)
-  const password = data.contraseña;
+  // ======================================================
+  // HU03 – Logout (idempotente)
+  // ======================================================
+  async logout(correo: string): Promise<void> {
+    const user = await this.userRepository.findByEmail(correo);
+    if (!user) throw new Error("UserNotFoundError");
 
-  const passwordRegex =
-  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_])[A-Za-z\d\W_]{8,16}$/;
-
-  if (!passwordRegex.test(password)) {
-  throw new Error("InvalidPasswordError");
-  }
-    const emailRegex =
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-  if (!emailRegex.test(data.correo)) {
-    throw new Error("InvalidEmailFormatError");
+    // Logout es responsabilidad del frontend eliminando el token.
+    return;
   }
 
-  const id = randomUUID();
-  const contraseña_hash = await bcrypt.hash(data.contraseña, 10);
+  // ======================================================
+  // HU04 – Eliminar cuenta de usuario
+  // ======================================================
+  async deleteAccount(correo: string): Promise<User> {
+    const user = await this.userRepository.findByEmail(correo);
+    if (!user) throw new Error("UserNotFoundError");
 
-  const user = new User({
-    id,
-    nombre: data.nombre,
-    apellidos: data.apellidos,
-    correo: data.correo,
-    contraseña_hash,
-    sesion_activa: true,
-    listaLugares: [],
-    listaVehiculos: [],
-    listaRutasGuardadas: [],
-    preferencias: {}
-  });
+    // Borrar en Supabase Auth
+    const { error } = await this.supabaseAdmin.auth.admin.deleteUser(user.id);
+    if (error) console.error(error.message);
 
-  await this.userRepository.save(user);
-
-  const saved = await this.userRepository.findByEmail(user.correo);
-  return saved!;
-}
-  async deleteByEmail(email: string): Promise<void> {
-  return this.userRepository.deleteByEmail(email);
-}
-async login(correo: string, contraseña: string): Promise<User> {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-  if (!emailRegex.test(correo)) {
-    throw new Error("InvalidEmailFormatError");
-  }
-
-  if (!contraseña || contraseña.trim() === "") {
-    throw new Error("InvalidCredentialsError");
-  }
-
-  let user: User | null;
-  try {
-    user = await this.userRepository.findByEmail(correo);
-  } catch {
-    // HU02_E06 – error inesperado de BD
-    throw new Error("UnexpectedDatabaseError");
-  }
-
-  if (!user) {
-    throw new Error("UserNotFoundError");
-  }
-
-  if (user.sesion_activa) {
-    throw new Error("SessionAlreadyActiveError");
-  }
-
-  
-  const correctPassword = await bcrypt.compare(contraseña, user.contraseña_hash);
-
-  if (!correctPassword) {
-    throw new Error("InvalidCredentialsError");
-  }
-
-  user.sesion_activa = true;
-  try {
-    await this.userRepository.update(user);
-  } catch {
-    throw new Error("UnexpectedDatabaseError");
-  }
-  return user;
-}
-async forceLogout(correo: string): Promise<void> {
-  const user = await this.userRepository.findByEmail(correo);
-  if (!user) return;
-
-  user.sesion_activa = false;
-  await this.userRepository.update(user);
-}
-async logout(correo: string): Promise<User> {
-
-  // Buscar el usuario
-  let user: User | null;
-  try {
-    user = await this.userRepository.findByEmail(correo);
-  } catch {
-    throw new Error("UnexpectedDatabaseError");
-  }
-
-  if (!user) {
-    throw new Error("UserNotFoundError");
-  }
-
-  // HU03_E02 – No había sesión activa
-  if (!user.sesion_activa) {
-    throw new Error("NoUserAuthenticatedError");
-  }
-
-  // HU03_E01 – Desactivar sesión
-  user.sesion_activa = false;
-
-  try {
-    await this.userRepository.update(user);
-  } catch {
-    throw new Error("UnexpectedDatabaseError");
-  }
-
-  return user;
-}
-async deleteAccount(correo: string): Promise<User>{
-  let user: User | null;
-  try {
-    user = await this.userRepository.findByEmail(correo);
-  } catch {
-    // HU04_E03 – Error inesperado en la BD
-    throw new Error("UnexpectedDatabaseError");
-  }
-
-  if (!user) {
-    throw new Error("AuthenticationRequiredError");
-  }
-
-  if (!user.sesion_activa) {
-    throw new Error("AuthenticationRequiredError");
-  }
-
-  user.listaLugares = [];
-  user.listaVehiculos = [];
-  user.listaRutasGuardadas = [];
-  user.preferencias = {};
-  user.sesion_activa = false;
-
-  try {
-    await this.userRepository.update(user);
-  } catch {
-    throw new Error("UnexpectedDatabaseError");
-  }
-
-  try {
+    // Borrar en BD local
     await this.userRepository.deleteByEmail(correo);
-  } catch {
-    throw new Error("UnexpectedDatabaseError");
+
+    return user;
   }
-  return user;
-}
-async findByEmail(email: string): Promise<User | null>{
-  return this.userRepository.findByEmail(email);
-}
 
+  async findByEmail(email: string) {
+    return this.userRepository.findByEmail(email);
+  }
 
+  // ======================================================
+  // Eliminación robusta e idempotente para HU01
+  // ======================================================
+  async deleteByEmail(email: string): Promise<void> {
+    const user = await this.userRepository.findByEmail(email);
+
+    // 1. Si existe en BD local → borrar en auth
+    if (user) {
+      try {
+        await this.supabaseAdmin.auth.admin.deleteUser(user.id);
+      } catch (err) {
+        console.warn("Failed to delete user in Supabase Auth:", err);
+      }
+    }
+
+    // 2. Aunque no exista localmente, buscarlo en Supabase Auth por email
+    if (!user) {
+      const { data, error } = await this.supabaseAdmin.auth.admin.listUsers();
+
+      if (!error) {
+        const found = data.users.find((u) => u.email === email);
+        if (found) {
+          try {
+            await this.supabaseAdmin.auth.admin.deleteUser(found.id);
+          } catch (err) {
+            console.error("Error deleting orphan auth user:", err);
+          }
+        }
+      }
+    }
+
+    // 3. Borrar SIEMPRE en la BD local
+    await this.userRepository.deleteByEmail(email);
+  }
 }
