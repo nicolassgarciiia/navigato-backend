@@ -3,7 +3,11 @@ import { UserService } from "../../src/modules/user/application/user.service";
 import { UserRepository } from "../../src/modules/user/domain/user.repository";
 import { User } from "../../src/modules/user/domain/user.entity";
 
-// MOCK Supabase
+// =================================================================
+// 1. DEFINICIÓN DE MOCKS
+// =================================================================
+
+// Mock de Supabase: Definimos las funciones con jest.fn() para poder espiarlas
 const mockSupabase = {
   auth: {
     signUp: jest.fn(),
@@ -15,12 +19,10 @@ const mockSupabase = {
   },
 };
 
-// createClient SIEMPRE devuelve el mock
 jest.mock("@supabase/supabase-js", () => ({
   createClient: () => mockSupabase,
 }));
 
-// MOCK UserRepository
 const createUserRepositoryMock = () => ({
   save: jest.fn(),
   findByEmail: jest.fn(),
@@ -28,12 +30,13 @@ const createUserRepositoryMock = () => ({
   deleteByEmail: jest.fn(),
 });
 
-describe("UserService – HU01 (Integración con mocks)", () => {
+describe("UserService – HU01 (Unit Testing con Mocks)", () => {
   let service: UserService;
   let userRepository: ReturnType<typeof createUserRepositoryMock>;
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    
     userRepository = createUserRepositoryMock();
 
     const moduleRef = await Test.createTestingModule({
@@ -46,18 +49,19 @@ describe("UserService – HU01 (Integración con mocks)", () => {
     service = moduleRef.get(UserService);
   });
 
-  // ============================
-  // HU01_E01 – Registro válido
-  // ============================
+  // =================================================================
+  // HU01_E01 – Registro válido (HAPPY PATH BLINDADO)
+  // =================================================================
   test("HU01_E01 – Registro válido", async () => {
     const email = "prueba_hu01_valido@test.com";
+    const rawPassword = "Prueba-34!";
 
-    // No existe en BD
+    // 1. Configurar comportamiento de los Mocks (Arrange)
     userRepository.findByEmail.mockResolvedValue(null);
+    userRepository.save.mockResolvedValue(true);
 
-    // Supabase signUp OK
     (mockSupabase.auth.signUp as jest.Mock).mockResolvedValue({
-      data: { user: { id: "uuid-hu01e01" } },
+      data: { user: { id: "uuid-generado-por-supabase", email: email } },
       error: null,
     });
 
@@ -65,39 +69,60 @@ describe("UserService – HU01 (Integración con mocks)", () => {
       nombre: "Prueba",
       apellidos: "García Fernández",
       correo: email,
-      contraseña: "Prueba-34!",
-      repetirContraseña: "Prueba-34!",
+      contraseña: rawPassword,
+      repetirContraseña: rawPassword,
       aceptaPoliticaPrivacidad: true,
     });
 
+    
     expect(result).toBeDefined();
     expect(result.correo).toBe(email);
-    expect(result.id).toBe("uuid-hu01e01");
-    expect(userRepository.save).toHaveBeenCalledTimes(1);
+    expect(result.id).toBe("uuid-generado-por-supabase"); 
+
     expect(mockSupabase.auth.signUp).toHaveBeenCalledTimes(1);
+    expect(mockSupabase.auth.signUp).toHaveBeenCalledWith({
+      email: email,
+      password: rawPassword,
+      options: {
+        data: {
+          nombre: "Prueba",
+          apellidos: "García Fernández",
+        },
+      },
+    });
+
+    expect(userRepository.save).toHaveBeenCalledTimes(1);
+    expect(userRepository.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        nombre: "Prueba",
+        apellidos: "García Fernández",
+        correo: email,
+        id: "uuid-generado-por-supabase", 
+        contrasenaHash: expect.any(String) 
+      })
+    );
   });
 
-  // ======================================
+  // =================================================================
   // HU01_E02 – Email ya registrado
-  // ======================================
+  // =================================================================
   test("HU01_E02 – Email ya registrado", async () => {
     const email = "prueba_hu01_existente@test.com";
 
-    // Simulamos que el email ya existe en la BD
     userRepository.findByEmail.mockResolvedValue(
       new User({
         id: "uuid-existente",
         nombre: "Prueba",
-        apellidos: "García Fernández",
+        apellidos: "García",
         correo: email,
-        contrasenaHash: "hash",
+        contrasenaHash: "hash-existente",
       })
     );
 
     await expect(
       service.register({
         nombre: "Prueba",
-        apellidos: "García Fernández",
+        apellidos: "García",
         correo: email,
         contraseña: "Prueba-35!",
         repetirContraseña: "Prueba-35!",
@@ -109,18 +134,18 @@ describe("UserService – HU01 (Integración con mocks)", () => {
     expect(userRepository.save).not.toHaveBeenCalled();
   });
 
-  // ======================================
+  // =================================================================
   // HU01_E03 – Contraseña inválida
-  // ======================================
+  // =================================================================
   test("HU01_E03 – Contraseña inválida", async () => {
     const email = `hu01e03@test.com`;
 
     await expect(
       service.register({
         nombre: "Prueba",
-        apellidos: "García Fernández",
+        apellidos: "García",
         correo: email,
-        contraseña: "Ab1!",
+        contraseña: "Ab1!", // Muy corta / mala
         repetirContraseña: "Ab1!",
         aceptaPoliticaPrivacidad: true,
       })
@@ -128,77 +153,80 @@ describe("UserService – HU01 (Integración con mocks)", () => {
 
     expect(userRepository.findByEmail).not.toHaveBeenCalled();
     expect(mockSupabase.auth.signUp).not.toHaveBeenCalled();
+    expect(userRepository.save).not.toHaveBeenCalled();
   });
 
-  // ======================================
+  // =================================================================
   // HU01_E04 – Email con formato inválido
-  // ======================================
+  // =================================================================
   test("HU01_E04 – Email con formato inválido", async () => {
-    const email = "email-malo-sin-arroba";
-
     await expect(
       service.register({
         nombre: "Prueba",
-        apellidos: "García Fernández",
-        correo: email,
+        apellidos: "García",
+        correo: "email-sin-arroba",
         contraseña: "Prueba-34!",
         repetirContraseña: "Prueba-34!",
         aceptaPoliticaPrivacidad: true,
       })
     ).rejects.toThrow("InvalidEmailFormatError");
+
+    expect(userRepository.save).not.toHaveBeenCalled();
+    expect(mockSupabase.auth.signUp).not.toHaveBeenCalled();
   });
 
-  // ======================================
+  // =================================================================
   // HU01_E05 – Contraseñas no coinciden
-  // ======================================
+  // =================================================================
   test("HU01_E05 – Contraseñas no coinciden", async () => {
-    const email = `hu01e05@test.com`;
-
     await expect(
       service.register({
         nombre: "Prueba",
-        apellidos: "García Fernández",
-        correo: email,
+        apellidos: "García",
+        correo: "test@test.com",
         contraseña: "Prueba-34!",
-        repetirContraseña: "Otra-35!",
+        repetirContraseña: "Otra-Cosa-35!",
         aceptaPoliticaPrivacidad: true,
       })
     ).rejects.toThrow("PasswordsDoNotMatchError");
+
+    expect(userRepository.save).not.toHaveBeenCalled();
+    expect(mockSupabase.auth.signUp).not.toHaveBeenCalled();
   });
 
-  // ======================================
+  // =================================================================
   // HU01_E06 – Datos personales incompletos
-  // ======================================
+  // =================================================================
   test("HU01_E06 – Datos personales incompletos", async () => {
-    const email = `hu01e06@test.com`;
-
     await expect(
       service.register({
-        nombre: "",
-        apellidos: "García Fernández",
-        correo: email,
+        nombre: "", // Vacío
+        apellidos: "García",
+        correo: "test@test.com",
         contraseña: "Prueba-34!",
         repetirContraseña: "Prueba-34!",
         aceptaPoliticaPrivacidad: true,
       })
     ).rejects.toThrow("InvalidPersonalInformationError");
+
+    expect(userRepository.save).not.toHaveBeenCalled();
   });
 
-  // ======================================
+  // =================================================================
   // HU01_E07 – Política de privacidad no aceptada
-  // ======================================
+  // =================================================================
   test("HU01_E07 – Política no aceptada", async () => {
-    const email = `hu01e07@test.com`;
-
     await expect(
       service.register({
         nombre: "Prueba",
-        apellidos: "García Fernández",
-        correo: email,
+        apellidos: "García",
+        correo: "test@test.com",
         contraseña: "Prueba-34!",
         repetirContraseña: "Prueba-34!",
-        aceptaPoliticaPrivacidad: false,
+        aceptaPoliticaPrivacidad: false, // FALSE
       })
     ).rejects.toThrow("PrivacyPolicyNotAcceptedError");
+
+    expect(userRepository.save).not.toHaveBeenCalled();
   });
 });

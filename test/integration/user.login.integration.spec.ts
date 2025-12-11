@@ -4,11 +4,13 @@ import { UserRepository } from "../../src/modules/user/domain/user.repository";
 import { User } from "../../src/modules/user/domain/user.entity";
 import * as crypto from "crypto";
 
-// Mismo mock de Supabase
+// =================================================================
+// DEFINICIÓN DE MOCKS
+// =================================================================
 const mockSupabase = {
   auth: {
     signUp: jest.fn(),
-    signInWithPassword: jest.fn(),
+    signInWithPassword: jest.fn(), 
     admin: {
       deleteUser: jest.fn(),
       listUsers: jest.fn(),
@@ -27,7 +29,7 @@ const createUserRepositoryMock = () => ({
   deleteByEmail: jest.fn(),
 });
 
-describe("UserService – HU02 (Integración con mocks)", () => {
+describe("UserService – HU02 (Unit Testing con Mocks)", () => {
   let service: UserService;
   let userRepository: ReturnType<typeof createUserRepositoryMock>;
 
@@ -46,33 +48,44 @@ describe("UserService – HU02 (Integración con mocks)", () => {
   });
 
   // =======================================================
-  // HU02_E01 – Inicio de sesión correcto
+  // HU02_E01 – Inicio de sesión correcto (HAPPY PATH)
   // =======================================================
   test("HU02_E01 – Credenciales correctas → inicio correcto", async () => {
     const email = `hu02e01@test.com`;
+    const password = "ValidPass1!";
 
-    // Usuario existe en BD
+    // 1. Arrange: Usuario existe en BD local
     userRepository.findByEmail.mockResolvedValue(
       new User({
         id: "uuid-hu02e01",
         nombre: "Prueba",
         apellidos: "Test",
         correo: email,
-        contrasenaHash: "hash",
+        contrasenaHash: "hash-irrelevante-aqui", 
       })
     );
 
-    // Supabase login OK
+
     (mockSupabase.auth.signInWithPassword as jest.Mock).mockResolvedValue({
-      data: { session: { access_token: "token-hu02-e01" } },
+      data: { 
+        session: { access_token: "token-hu02-e01" },
+        user: { email: email } 
+      },
       error: null,
     });
 
-    const result = await service.login(email, "ValidPass1!");
+    const result = await service.login(email, password);
 
     expect(result).toBeDefined();
     expect(result.user.correo).toBe(email);
     expect(result.access_token).toBe("token-hu02-e01");
+
+    expect(userRepository.findByEmail).toHaveBeenCalledWith(email);
+    
+    expect(mockSupabase.auth.signInWithPassword).toHaveBeenCalledWith({
+      email: email,
+      password: password,
+    });
   });
 
   // =======================================================
@@ -80,6 +93,7 @@ describe("UserService – HU02 (Integración con mocks)", () => {
   // =======================================================
   test("HU02_E02 – Email inexistente → error", async () => {
     const email = `hu02e02@test.com`;
+
 
     userRepository.findByEmail.mockResolvedValue(null);
 
@@ -95,7 +109,9 @@ describe("UserService – HU02 (Integración con mocks)", () => {
   // =======================================================
   test("HU02_E03 – Contraseña incorrecta → error", async () => {
     const email = `hu02e03@test.com`;
+    const wrongPass = "Incorrecta1!";
 
+    // Arrange: El usuario SÍ existe en local
     userRepository.findByEmail.mockResolvedValue(
       new User({
         id: "uuid-hu02e03",
@@ -111,9 +127,14 @@ describe("UserService – HU02 (Integración con mocks)", () => {
       error: { message: "Invalid login credentials" },
     });
 
-    await expect(service.login(email, "Incorrecta1!")).rejects.toThrow(
+    await expect(service.login(email, wrongPass)).rejects.toThrow(
       "InvalidCredentialsError"
     );
+
+    expect(mockSupabase.auth.signInWithPassword).toHaveBeenCalledWith({
+      email: email,
+      password: wrongPass,
+    });
   });
 
   // =======================================================
@@ -123,6 +144,10 @@ describe("UserService – HU02 (Integración con mocks)", () => {
     await expect(
       service.login("email-malo", "ValidPass1!")
     ).rejects.toThrow("InvalidEmailFormatError");
+
+
+    expect(userRepository.findByEmail).not.toHaveBeenCalled();
+    expect(mockSupabase.auth.signInWithPassword).not.toHaveBeenCalled();
   });
 
   // =======================================================
@@ -134,5 +159,8 @@ describe("UserService – HU02 (Integración con mocks)", () => {
     await expect(service.login(email, "")).rejects.toThrow(
       "InvalidCredentialsError"
     );
+
+    expect(userRepository.findByEmail).not.toHaveBeenCalled(); 
+    expect(mockSupabase.auth.signInWithPassword).not.toHaveBeenCalled();
   });
 });

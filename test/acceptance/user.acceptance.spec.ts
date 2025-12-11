@@ -3,13 +3,16 @@ import { UserModule } from "../../src/modules/user/user.module";
 import { UserService } from "../../src/modules/user/application/user.service";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import * as dotenv from "dotenv";
-dotenv.config();
 
+// Cargar variables de entorno
+dotenv.config();
 
 describe("HU01 – Registro de usuario (ATDD)", () => {
   let service: UserService;
-  // 2. AÑADIR ESTA VARIABLE
-  let supabaseAdmin: SupabaseClient; 
+  let supabaseAdmin: SupabaseClient;
+
+  // LISTA DE LIMPIEZA
+  let emailsToDelete: string[] = [];
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -18,20 +21,39 @@ describe("HU01 – Registro de usuario (ATDD)", () => {
 
     service = moduleRef.get(UserService);
 
-    // 3. INICIALIZAR EL CLIENTE (Añadir esto)
-    // Usamos SERVICE_ROLE para poder consultar usuarios sin iniciar sesión
+    // Inicializar cliente de Supabase con permisos de Admin (Service Role)
     supabaseAdmin = createClient(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE!
     );
   });
 
+  // ==========================================================
+  // AFTER EACH: Limpieza automática
+  // Se ejecuta SIEMPRE al finalizar cada test (pase o falle)
+  // ==========================================================
+  afterEach(async () => {
+    // Recorremos la lista de emails pendientes de borrar
+    for (const email of emailsToDelete) {
+      try {
+        await service.deleteByEmail(email);
+      } catch (error) {
+      }
+    }
+    // Reseteamos la lista para el siguiente test
+    emailsToDelete = [];
+  });
 
   // ============================
   // HU01_E01 – Registro válido
   // ============================
   test("HU01_E01 – Registro válido", async () => {
     const email = "prueba_hu01_valido@test.com";
+    
+    // 1. Agendamos el borrado por si acaso falla el test a mitad
+    emailsToDelete.push(email);
+
+    // 2. Ejecución
     const result = await service.register({
       nombre: "Prueba",
       apellidos: "García Fernández",
@@ -41,19 +63,16 @@ describe("HU01 – Registro de usuario (ATDD)", () => {
       aceptaPoliticaPrivacidad: true,
     });
 
+    
     expect(result).toBeDefined();
     expect(result.correo).toBe(email);
-    // 3. VERIFICACIÓN REAL 
+
+   
     const { data } = await supabaseAdmin.auth.admin.listUsers();
     const userInSupabase = data.users.find((u) => u.email === email);
     
-    expect(userInSupabase).toBeDefined(); // Confirma que se creó en la nube
-    expect(userInSupabase?.id).toBe(result.id); // Confirma que los IDs están sincronizados
-
-    // Teardown (Limpieza)
-    await service.deleteByEmail(email);
-
-    await service.deleteByEmail(email);
+    expect(userInSupabase).toBeDefined(); 
+    expect(userInSupabase?.id).toBe(result.id); 
   });
 
   // ======================================
@@ -61,7 +80,9 @@ describe("HU01 – Registro de usuario (ATDD)", () => {
   // ======================================
   test("HU01_E02 – Email ya registrado", async () => {
     const email = "prueba_hu01_existente@test.com";
-    // Crear primero un usuario
+    emailsToDelete.push(email); 
+
+    // 1. Crear primero un usuario (Precondición)
     await service.register({
       nombre: "Prueba",
       apellidos: "García Fernández",
@@ -71,7 +92,7 @@ describe("HU01 – Registro de usuario (ATDD)", () => {
       aceptaPoliticaPrivacidad: true,
     });
 
-    // Intentar registrar otra vez
+    // 2. Intentar registrar otra vez (Debe fallar)
     await expect(
       service.register({
         nombre: "Prueba",
@@ -82,13 +103,14 @@ describe("HU01 – Registro de usuario (ATDD)", () => {
         aceptaPoliticaPrivacidad: true,
       })
     ).rejects.toThrow("EmailAlreadyRegisteredError");
-    await service.deleteByEmail(email);
   });
+
   // ======================================
   // HU01_E03 – Contraseña inválida
   // ======================================
   test("HU01_E03 – Contraseña inválida", async () => {
     const email = `hu01e03@test.com`;
+    
 
     await expect(
      service.register({
@@ -101,6 +123,10 @@ describe("HU01 – Registro de usuario (ATDD)", () => {
     })
   ).rejects.toThrow("InvalidPasswordError");
 });
+
+  // ======================================
+  // HU01_E04 – Email con formato inválido
+  // ======================================
   test("HU01_E04 – Email con formato inválido", async () => {
     const email = "email-malo-sin-arroba";
 
@@ -115,7 +141,8 @@ describe("HU01 – Registro de usuario (ATDD)", () => {
       })
     ).rejects.toThrow("InvalidEmailFormatError");
   });
-    // ======================================
+
+  // ======================================
   // HU01_E05 – Contraseñas no coinciden
   // ======================================
   test("HU01_E05 – Contraseñas no coinciden", async () => {
@@ -132,7 +159,8 @@ describe("HU01 – Registro de usuario (ATDD)", () => {
       })
     ).rejects.toThrow("PasswordsDoNotMatchError");
   });
-    // ======================================
+
+  // ======================================
   // HU01_E06 – Datos personales incompletos
   // ======================================
   test("HU01_E06 – Datos personales incompletos", async () => {
@@ -149,7 +177,8 @@ describe("HU01 – Registro de usuario (ATDD)", () => {
       })
     ).rejects.toThrow("InvalidPersonalInformationError");
   });
-    // ======================================
+
+  // ======================================
   // HU01_E07 – Política de privacidad no aceptada
   // ======================================
   test("HU01_E07 – Política no aceptada", async () => {

@@ -3,11 +3,14 @@ import { UserService } from "../../src/modules/user/application/user.service";
 import { UserRepository } from "../../src/modules/user/domain/user.repository";
 import { User } from "../../src/modules/user/domain/user.entity";
 
-// Supabase mock
+// =================================================================
+// DEFINICIÓN DE MOCKS
+// =================================================================
 const mockSupabase = {
   auth: {
     signUp: jest.fn(),
     signInWithPassword: jest.fn(),
+    signOut: jest.fn(), 
     admin: {
       deleteUser: jest.fn(),
       listUsers: jest.fn(),
@@ -21,17 +24,17 @@ jest.mock("@supabase/supabase-js", () => ({
 
 const createUserRepositoryMock = () => ({
   save: jest.fn(),
-  findByEmail: jest.fn(),
+  findByEmail: jest.fn(), 
   update: jest.fn(),
   deleteByEmail: jest.fn(),
 });
 
-describe("UserService – HU03 (Integración con mocks)", () => {
+describe("UserService – HU03 (Unit Testing con Mocks)", () => {
   let service: UserService;
   let userRepository: ReturnType<typeof createUserRepositoryMock>;
 
   beforeEach(async () => {
-    jest.clearAllMocks();
+    jest.clearAllMocks(); 
     userRepository = createUserRepositoryMock();
 
     const moduleRef = await Test.createTestingModule({
@@ -60,30 +63,27 @@ describe("UserService – HU03 (Integración con mocks)", () => {
       })
     );
 
+    (mockSupabase.auth.signOut as jest.Mock).mockResolvedValue({ error: null });
+
     await expect(service.logout(email)).resolves.not.toThrow();
+
+    expect(userRepository.findByEmail).toHaveBeenCalledTimes(1);
+    expect(userRepository.findByEmail).toHaveBeenCalledWith(email);
+
   });
 
   // ======================================================
-  // HU03_E02 – Idempotencia (Cerrar sesión si no existe)
+  // HU03_E02 – Usuario no encontrado (Comportamiento actual)
   // ======================================================
-  test("HU03_E02 – Cerrar sesión repetida (Idempotencia)", async () => {
+  test("HU03_E02 – Intento de logout con email inexistente", async () => {
     const email = `hu03e02@test.com`;
 
-    userRepository.findByEmail.mockResolvedValueOnce(
-      new User({
-        id: "uuid-hu03e02",
-        nombre: "Usuario",
-        apellidos: "Inactivo",
-        correo: email,
-        contrasenaHash: "hash",
-      })
-    );
-    userRepository.findByEmail.mockResolvedValueOnce(null);
+    userRepository.findByEmail.mockResolvedValue(null);
 
-    // Primer logout (usuario existe)
-    await expect(service.logout(email)).resolves.not.toThrow();
-
-    // Segundo logout (usuario ya no existe)
     await expect(service.logout(email)).rejects.toThrow("UserNotFoundError");
+
+    expect(userRepository.findByEmail).toHaveBeenCalledWith(email);
+    
+    expect(mockSupabase.auth.signOut).not.toHaveBeenCalled();
   });
 });
