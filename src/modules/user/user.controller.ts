@@ -14,13 +14,16 @@ import {
   HttpException
 } from "@nestjs/common";
 import { UserService } from "./application/user.service";
+import { RegisterUserDto } from "./dto/create-user.dto";
+import { LoginUserDto } from "./dto/login-user.dto";
+import { UserEmailDto } from "./dto/user-email.dto";
 
 @Controller("users")
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
   // ================================================================
-  // HELPER PRIVADO: Traducción de errores del dominio → HTTP
+  // TU HANDLE ERROR ORIGINAL (Intacto para no cambiar mensajes)
   // ================================================================
   private handleError(error: any): never {
     const msg = error.message;
@@ -54,13 +57,15 @@ export class UserController {
 
       case "InvalidPersonalInformationError":
         throw new BadRequestException("Nombre o apellidos incompletos.");
+        
       case "EmailNotConfirmedError":
         throw new UnauthorizedException(
           "Tu cuenta aún no ha sido verificada. Por favor, revisa tu correo y haz clic en el enlace de confirmación."
         );
+
       // Default (500)
       default:
-        console.error("Error no controlado:", error);
+        // console.error("Error no controlado:", error); // Descomenta para depurar
         throw new InternalServerErrorException(
           "Ha ocurrido un error inesperado en el servidor."
         );
@@ -68,40 +73,40 @@ export class UserController {
   }
 
   // ===============================
-  // REGISTRO
+  // REGISTRO (Usando DTO)
   // ===============================
   @Post("register")
-  async register(@Body() body: any) {
+  async register(@Body() createUserDto: RegisterUserDto) { // <--- Cambio clave: Tipado
     try {
-      const user = await this.userService.register(body);
-      return { ok: true, user };
+      const user = await this.userService.register(createUserDto);
+      return { ok: true, user }; // Devuelve exactamente lo mismo que antes
     } catch (error) {
       this.handleError(error);
     }
   }
 
   // ===============================
-  // LOGIN
+  // LOGIN (Usando DTO)
   // ===============================
   @Post("login")
   @HttpCode(HttpStatus.OK)
-  async login(@Body() body: any) {
+  async login(@Body() loginDto: LoginUserDto) { // <--- Cambio clave: Tipado
     try {
-      const { correo, contraseña } = body;
-      return await this.userService.login(correo, contraseña);
+      // Accedemos a las propiedades del DTO con seguridad
+      return await this.userService.login(loginDto.correo, loginDto.contraseña);
     } catch (error) {
       this.handleError(error);
     }
   }
 
   // ===============================
-  // LOGOUT
+  // LOGOUT (Usando DTO)
   // ===============================
   @Post("logout")
   @HttpCode(HttpStatus.OK)
-  async logout(@Body() body: any) {
+  async logout(@Body() logoutDto: UserEmailDto) { // <--- Cambio clave: Tipado
     try {
-      await this.userService.logout(body.correo);
+      await this.userService.logout(logoutDto.correo);
       return { ok: true, message: "Sesión cerrada correctamente." };
     } catch (error) {
       this.handleError(error);
@@ -109,12 +114,12 @@ export class UserController {
   }
 
   // ===============================
-  // ELIMINAR CUENTA
+  // ELIMINAR CUENTA (Usando DTO)
   // ===============================
-  @Post("delete")
-  async deleteAccount(@Body() body: any) {
+  @Post("delete") // Mantenemos POST si así lo tenías en tus tests
+  async deleteAccount(@Body() deleteDto: UserEmailDto) { // <--- Cambio clave: Tipado
     try {
-      const user = await this.userService.deleteAccount(body.correo);
+      const user = await this.userService.deleteAccount(deleteDto.correo);
       return { ok: true, user };
     } catch (error) {
       this.handleError(error);

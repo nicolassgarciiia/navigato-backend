@@ -6,6 +6,9 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 @Injectable()
 export class SupabaseUserRepository implements UserRepository {
   private supabase: SupabaseClient;
+  
+  // Definimos la tabla aquí para no equivocarnos al escribirla varias veces
+  private readonly tableName = "usuarios"; 
 
   constructor() {
     this.supabase = createClient(
@@ -14,15 +17,29 @@ export class SupabaseUserRepository implements UserRepository {
     );
   }
 
+  private mapToDomain(data: any): User {
+    return new User({
+      id: data.id,
+      nombre: data.nombre,
+      apellidos: data.apellidos,
+      correo: data.correo,
+      contrasenaHash: data.contrasenaHash,
+    });
+  }
+
+  // ---------------------------------------------------------
+  // Métodos Públicos
+  // ---------------------------------------------------------
+
   async save(user: User): Promise<void> {
     const { error } = await this.supabase
-      .from("usuarios")
+      .from(this.tableName)
       .insert({
         id: user.id,
         nombre: user.nombre,
         apellidos: user.apellidos,
         correo: user.correo,
-        contrasenaHash: user.contrasenaHash
+        contrasenaHash: user.contrasenaHash 
       });
 
     if (error) {
@@ -32,7 +49,7 @@ export class SupabaseUserRepository implements UserRepository {
 
   async findByEmail(email: string): Promise<User | null> {
     const { data, error } = await this.supabase
-      .from("usuarios")
+      .from(this.tableName)
       .select("*")
       .eq("correo", email)
       .maybeSingle();
@@ -40,18 +57,12 @@ export class SupabaseUserRepository implements UserRepository {
     if (error) throw new Error("DatabaseError: " + error.message);
     if (!data) return null;
 
-    return new User({
-      id: data.id,
-      nombre: data.nombre,
-      apellidos: data.apellidos,
-      correo: data.correo,
-      contrasenaHash: data.contrasenaHash
-    });
+    return this.mapToDomain(data);
   }
 
   async findById(id: string): Promise<User | null> {
     const { data, error } = await this.supabase
-      .from("usuarios")
+      .from(this.tableName)
       .select("*")
       .eq("id", id)
       .maybeSingle();
@@ -59,31 +70,12 @@ export class SupabaseUserRepository implements UserRepository {
     if (error) throw new Error("DatabaseError: " + error.message);
     if (!data) return null;
 
-    return new User({
-      id: data.id,
-      nombre: data.nombre,
-      apellidos: data.apellidos,
-      correo: data.correo,
-      contrasenaHash: data.contrasenaHash
-    });
-  }
-
-  async update(user: User): Promise<void> {
-    const { error } = await this.supabase
-      .from("usuarios")
-      .update({
-        nombre: user.nombre,
-        apellidos: user.apellidos,
-        password_hash: user.contrasenaHash
-      })
-      .eq("correo", user.correo);
-
-    if (error) throw new Error("DatabaseError: " + error.message);
+    return this.mapToDomain(data);
   }
 
   async deleteByEmail(email: string): Promise<void> {
     const { error } = await this.supabase
-      .from("usuarios")
+      .from(this.tableName)
       .delete()
       .eq("correo", email);
 
