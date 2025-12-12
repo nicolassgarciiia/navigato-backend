@@ -1,0 +1,62 @@
+name: CI Pipeline (ATDD)
+
+on:
+  # 1. Ejecutar cuando se hace PUSH (se sube código)
+  push:
+    branches:
+      - "main"        # Protege la rama principal
+      - "it-*"        # Protege CUALQUIER rama de iteración (it-01, it-02, it-05...)
+  
+  # 2. Ejecutar cuando se abre un PULL REQUEST
+  pull_request:
+    branches:
+      - "main"        # Al intentar mezclar hacia main
+      - "it-*"        # Al intentar mezclar hacia una iteración (LO MÁS IMPORTANTE)
+
+jobs:
+  build-and-test:
+    name: Build & Test Strategy
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1. Descargar el código
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    # 2. Instalar Node.js
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    # 3. Instalar dependencias (npm ci es más rápido y seguro que npm install)
+    - name: Install Dependencies
+      run: npm ci
+
+    # 4. Verificar que el código compila (Build)
+    - name: Build Project
+      run: npm run build
+
+    # 5. EJECUTAR TESTS UNITARIOS (Mocks)
+    # Son rápidos. Si fallan, no perdemos tiempo lanzando los de integración.
+    - name: Run Unit Tests (Mocks)
+      run: npm run test
+      env:
+        # Aunque son mocks, a veces el ConfigModule pide que existan las variables
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE }}
+
+    # 6. EJECUTAR TESTS DE INTEGRACIÓN / E2E (Supabase Real)
+    # Aquí es donde ocurre la magia del ATDD.
+    - name: Run Integration/E2E Tests
+      # Asegúrate de que tienes un script "test:e2e" en tu package.json
+      # Si tus tests de integración están en la carpeta 'test', suele ser este comando.
+      run: npm run test:e2e
+      env:
+        # Necesitamos las claves REALES para conectar a Supabase desde GitHub
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE }}
+        NODE_ENV: test
