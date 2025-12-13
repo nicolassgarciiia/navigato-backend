@@ -1,3 +1,3 @@
-export interface GeocodingService {
-  getToponimo(latitud: number, longitud: number): Promise<string>;
+export abstract class GeocodingService {
+  abstract getToponimo(latitud: number, longitud: number): Promise<string>;
 }
