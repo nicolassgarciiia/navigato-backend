@@ -1,7 +1,7 @@
 import { Test } from "@nestjs/testing";
-import { UserService } from "../../src/modules/user/application/user.service";
-import { UserRepository } from "../../src/modules/user/domain/user.repository";
-import { User } from "../../src/modules/user/domain/user.entity";
+import { UserService } from "../../../src/modules/user/application/user.service";
+import { UserRepository } from "../../../src/modules/user/domain/user.repository";
+import { User } from "../../../src/modules/user/domain/user.entity";
 
 // =================================================================
 // DEFINICIÓN DE MOCKS
