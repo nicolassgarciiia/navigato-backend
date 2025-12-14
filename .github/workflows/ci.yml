@@ -47,6 +47,7 @@ jobs:
         SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE }}
+        OPENROUTESERVICE_API_KEY: ${{ secrets.OPENROUTESERVICE_API_KEY }}
 
     # 6. EJECUTAR TESTS DE INTEGRACIÓN / E2E (Supabase Real)
     # Aquí es donde ocurre la magia del ATDD.
