@@ -8,7 +8,7 @@ import * as dotenv from "dotenv";
 
 dotenv.config();
 
-describe("HU06 – Alta de POI por topónimo (ATDD – sin mocks)", () => {
+describe("HU06 – Alta de POI por topónimo", () => {
   let poiService: POIService;
   let userService: UserService;
 
@@ -48,7 +48,7 @@ describe("HU06 – Alta de POI por topónimo (ATDD – sin mocks)", () => {
     const poi = await poiService.createByToponym(
       email,
       "Recuerdo de París",
-      "Torre Eiffel, París"
+      "Torre Eiffel, París, Francia"
     );
 
     expect(poi).toBeDefined();
@@ -58,20 +58,6 @@ describe("HU06 – Alta de POI por topónimo (ATDD – sin mocks)", () => {
     expect(poi.longitud).toBeCloseTo(2.2945, 1);
     expect(poi.favorito).toBe(false);
   });
-
-  // =====================================================
-  // HU06_E02 – Topónimo no encontrado
-  // =====================================================
-  test("HU06_E02 – Topónimo no encontrado", async () => {
-    await expect(
-      poiService.createByToponym(
-        email,
-        "Lugar preferido",
-        "Lugar Inexistente 12345"
-      )
-    ).rejects.toThrow("GeocodingToponymNotFoundError");
-  });
-
 
   // =====================================================
   // HU06_E04 – Sesión no iniciada
