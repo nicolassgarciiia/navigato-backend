@@ -141,4 +141,8 @@ export class POIService {
 
     return poi;
   }
+  async listByUser(userEmail: string): Promise<POI[]> {
+  throw new Error("Not implemented");
 }
+}
+
