@@ -12,6 +12,7 @@ import {
   AuthenticationRequiredError,
   GeocodingServiceUnavailableError,
   DatabaseConnectionError,
+  GeocodingToponymNotFoundError,
 } from "../domain/errors";
 
 @Injectable()
@@ -77,6 +78,61 @@ export class POIService {
     });
 
     // 7. Persistencia
+    try {
+      await this.poiRepository.save(poi, user.id);
+    } catch {
+      throw new DatabaseConnectionError();
+    }
+
+    return poi;
+  }
+  // ======================================================
+  // HU06 – Alta de POI por topónimo
+  // ======================================================
+  async createByToponym(
+    userEmail: string,
+    nombre: string,
+    toponimo: string
+  ): Promise<POI> {
+    const user = await this.userRepository.findByEmail(userEmail);
+    if (!user) {
+      throw new AuthenticationRequiredError();
+    }
+
+    if (!nombre || nombre.trim().length < 3) {
+      throw new InvalidPOINameError();
+    }
+
+    const duplicated = await this.poiRepository.findByUserAndName(
+      user.id,
+      nombre
+    );
+    if (duplicated) {
+      throw new DuplicatePOINameError();
+    }
+
+    // 🔑 Geocoding: texto → coordenadas
+    let geoResult: { latitud: number; longitud: number };
+
+    try {
+      geoResult =
+        await this.geocodingService.getCoordinatesFromToponym(toponimo);
+    } catch (error) {
+      if (error instanceof GeocodingToponymNotFoundError) {
+        throw error;
+      }
+      throw new GeocodingServiceUnavailableError();
+    }
+
+    const poi = new POI({
+      id: randomUUID(),
+      nombre,
+      latitud: geoResult.latitud,
+      longitud: geoResult.longitud,
+      toponimo, 
+      favorito: false,
+    });
+
     try {
       await this.poiRepository.save(poi, user.id);
     } catch {

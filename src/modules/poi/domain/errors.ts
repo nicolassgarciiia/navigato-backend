@@ -39,3 +39,10 @@ export class DatabaseConnectionError extends Error {
     this.name = "DatabaseConnectionError";
   }
 }
+export class GeocodingToponymNotFoundError extends Error {
+  constructor() {
+    super("GeocodingToponymNotFoundError");
+    this.name = "GeocodingToponymNotFoundError";
+  }
+}
+

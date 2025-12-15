@@ -4,6 +4,7 @@ import { GeocodingService } from './application/geocoding.service';
 import { OpenRouteServiceGeocodingService } from './infrastructure/openrouteservice-geocoding.service';
 
 @Module({
+  controllers: [GeocodingController],
   providers: [
     {
       provide: GeocodingService,
