@@ -55,12 +55,4 @@ export class POIController {
       throw error;
     }
   }
-  @Post("by-toponym")
-async createByToponym(@Body() body: any) {
-  return this.poiService.createByToponym(
-    body.correo,
-    body.nombre,
-    body.toponimo
-  );
-}
 }

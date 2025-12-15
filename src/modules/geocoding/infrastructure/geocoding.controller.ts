@@ -17,4 +17,25 @@ export class GeocodingController {
     );
     return { ok: true, toponimo };
   }
+  @Get("search")
+  async geocodingByToponym(
+    @Query("q") q: string
+  ) {
+    if (!q || !q.trim()) {
+      return {
+        ok: false,
+        error: "El topónimo es obligatorio",
+      };
+    }
+
+    const { latitud, longitud } =
+      await this.geocodingService.getCoordinatesFromToponym(q);
+
+    return {
+      ok: true,
+      lat: latitud,
+      lng: longitud,
+    };
+  }
+
 }
