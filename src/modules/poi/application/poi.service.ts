@@ -85,4 +85,7 @@ export class POIService {
 
     return poi;
   }
+  async createByToponym(email: string, nombre: string, toponimo: string): Promise<POI> {
+    throw new Error("Method not implemented.");
+}
 }
