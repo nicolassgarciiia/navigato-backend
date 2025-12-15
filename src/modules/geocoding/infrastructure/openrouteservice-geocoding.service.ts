@@ -1,5 +1,9 @@
 import { Injectable } from "@nestjs/common";
 import { GeocodingService } from "../application/geocoding.service";
+import {
+  GeocodingToponymNotFoundError,
+  GeocodingServiceUnavailableError,
+} from "../../poi/domain/errors";
 
 @Injectable()
 export class OpenRouteServiceGeocodingService implements GeocodingService {
@@ -31,5 +35,42 @@ export class OpenRouteServiceGeocodingService implements GeocodingService {
     }
 
     return data.features[0].properties.label;
+  }
+   async getCoordinatesFromToponym(
+    toponimo: string
+  ): Promise<{ latitud: number; longitud: number }> {
+    if (!this.apiKey) {
+      throw new GeocodingServiceUnavailableError();
+    }
+
+    const url =
+      `https://api.openrouteservice.org/geocode/search?` +
+      `api_key=${this.apiKey}&text=${encodeURIComponent(toponimo)}`;
+
+    let response: Response;
+
+    try {
+      response = await fetch(url);
+    } catch {
+      throw new GeocodingServiceUnavailableError();
+    }
+
+    if (!response.ok) {
+      throw new GeocodingServiceUnavailableError();
+    }
+
+    const data: any = await response.json();
+
+    if (!data?.features || data.features.length === 0) {
+      throw new GeocodingToponymNotFoundError();
+    }
+
+    // 🔑 La fuente de verdad de las coordenadas es el search
+    const [lng, lat] = data.features[0].geometry.coordinates;
+
+    return {
+      latitud: lat,
+      longitud: lng,
+    };
   }
 }
