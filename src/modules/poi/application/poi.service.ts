@@ -141,4 +141,19 @@ export class POIService {
 
     return poi;
   }
+  async listByUser(userEmail: string): Promise<POI[]> {
+  // 1. Usuario autenticado
+  const user = await this.userRepository.findByEmail(userEmail);
+  if (!user) {
+    throw new AuthenticationRequiredError();
+  }
+
+  // 2. Obtener lugares
+  try {
+    return await this.poiRepository.findByUser(user.id);
+  } catch {
+    throw new DatabaseConnectionError();
+  }
 }
+}
+

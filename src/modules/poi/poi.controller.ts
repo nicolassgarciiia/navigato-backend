@@ -6,6 +6,8 @@ import {
   UnauthorizedException,
   InternalServerErrorException,
   ServiceUnavailableException,
+  Get,
+  Query,
 } from "@nestjs/common";
 import { POIService } from "./application/poi.service";
 import { CreatePOIDto } from "./dto/create-poi.dto";
@@ -46,6 +48,25 @@ export class POIController {
 
       if (error instanceof GeocodingServiceUnavailableError) {
         throw new ServiceUnavailableException(error.message);
+      }
+
+      if (error instanceof DatabaseConnectionError) {
+        throw new InternalServerErrorException(error.message);
+      }
+
+      throw error;
+    }
+  }
+  // =====================================================
+  // HU07 – Consulta de lista de lugares de interés
+  // =====================================================
+  @Get()
+  async list(@Query("correo") correo: string) {
+    try {
+      return await this.poiService.listByUser(correo);
+    } catch (error) {
+      if (error instanceof AuthenticationRequiredError) {
+        throw new UnauthorizedException(error.message);
       }
 
       if (error instanceof DatabaseConnectionError) {
