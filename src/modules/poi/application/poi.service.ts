@@ -4,6 +4,7 @@ import { POI } from "../domain/poi.entity";
 import { POIRepository } from "../domain/poi.repository";
 import { UserRepository } from "../../user/domain/user.repository";
 import { GeocodingService } from "../../geocoding/application/geocoding.service";
+import { PlaceOfInterestNotFoundError } from "../domain/errors";
 
 import {
   InvalidPOINameError,
@@ -155,9 +156,26 @@ export class POIService {
     throw new DatabaseConnectionError();
   }
 }
-async deletePOI(correo: string, poiId: string): Promise<void> {
-  throw new Error("Method not implemented.");
-}
+async deletePOI(userEmail: string, poiId: string): Promise<void> {
+    const user = await this.userRepository.findByEmail(userEmail);
+    if (!user) {
+      throw new AuthenticationRequiredError();
+    }
+    const poi = await this.poiRepository.findByIdAndUser(
+      poiId,
+      user.id
+    );
+
+    if (!poi) {
+      throw new PlaceOfInterestNotFoundError();
+    }
+
+    try {
+      await this.poiRepository.delete(poiId);
+    } catch {
+      throw new DatabaseConnectionError();
+    }
+  }
 }
 
 

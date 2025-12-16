@@ -80,4 +80,50 @@ export class SupabasePOIRepository implements POIRepository {
         })
     );
   }
+    // ======================================================
+  // HU08 – Buscar POI por ID y usuario
+  // ======================================================
+  async findByIdAndUser(
+    poiId: string,
+    userId: string
+  ): Promise<POI | null> {
+    const { data, error } = await this.supabase
+      .from("pois")
+      .select("*")
+      .eq("id", poiId)
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Supabase findByIdAndUser error:", error);
+      throw error;
+    }
+
+    if (!data) return null;
+
+    return new POI({
+      id: data.id,
+      nombre: data.nombre,
+      latitud: Number(data.latitud),
+      longitud: Number(data.longitud),
+      toponimo: data.toponimo,
+      favorito: data.favorito,
+    });
+  }
+
+  // ======================================================
+  // HU08 – Eliminar POI por ID
+  // ======================================================
+  async delete(poiId: string): Promise<void> {
+    const { error } = await this.supabase
+      .from("pois")
+      .delete()
+      .eq("id", poiId);
+
+    if (error) {
+      console.error("Supabase delete POI error:", error);
+      throw error;
+    }
+  }
+
 }
