@@ -45,4 +45,10 @@ export class GeocodingToponymNotFoundError extends Error {
     this.name = "GeocodingToponymNotFoundError";
   }
 }
+export class PlaceOfInterestNotFoundError extends Error {
+  constructor(message = "PlaceOfInterestNotFoundError") {
+    super(message);
+    this.name = "PlaceOfInterestNotFoundError";
+  }
+}
 

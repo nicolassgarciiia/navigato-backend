@@ -155,5 +155,9 @@ export class POIService {
     throw new DatabaseConnectionError();
   }
 }
+async deletePOI(correo: string, poiId: string): Promise<void> {
+  throw new Error("Method not implemented.");
 }
+}
+
 
