@@ -8,6 +8,9 @@ import {
   ServiceUnavailableException,
   Get,
   Query,
+  NotFoundException,
+  Param,
+  Delete
 } from "@nestjs/common";
 import { POIService } from "./application/poi.service";
 import { CreatePOIDto } from "./dto/create-poi.dto";
@@ -18,6 +21,7 @@ import {
   AuthenticationRequiredError,
   GeocodingServiceUnavailableError,
   DatabaseConnectionError,
+  PlaceOfInterestNotFoundError
 } from "./domain/errors";
 
 @Controller("pois")
@@ -67,6 +71,30 @@ export class POIController {
     } catch (error) {
       if (error instanceof AuthenticationRequiredError) {
         throw new UnauthorizedException(error.message);
+      }
+
+      if (error instanceof DatabaseConnectionError) {
+        throw new InternalServerErrorException(error.message);
+      }
+
+      throw error;
+    }
+  }
+   @Delete(":id")
+  async deletePOI(
+    @Param("id") id: string,
+    @Query("correo") correo: string
+  ) {
+    try {
+      await this.poiService.deletePOI(correo, id);
+      return { ok: true };
+    } catch (error) {
+      if (error instanceof AuthenticationRequiredError) {
+        throw new UnauthorizedException(error.message);
+      }
+
+      if (error instanceof PlaceOfInterestNotFoundError) {
+        throw new NotFoundException(error.message);
       }
 
       if (error instanceof DatabaseConnectionError) {
