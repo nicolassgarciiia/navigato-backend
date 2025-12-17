@@ -2,106 +2,51 @@ import {
   Controller,
   Post,
   Body,
-  BadRequestException,
-  UnauthorizedException,
-  InternalServerErrorException,
-  ServiceUnavailableException,
   Get,
   Query,
-  NotFoundException,
   Param,
-  Delete
+  Delete,
+  UseFilters,
 } from "@nestjs/common";
 import { POIService } from "./application/poi.service";
 import { CreatePOIDto } from "./dto/create-poi.dto";
-import {
-  InvalidPOINameError,
-  DuplicatePOINameError,
-  InvalidCoordinatesFormatError,
-  AuthenticationRequiredError,
-  GeocodingServiceUnavailableError,
-  DatabaseConnectionError,
-  PlaceOfInterestNotFoundError
-} from "./domain/errors";
+import { POIExceptionFilter } from "./poi-exception.filter";
 
 @Controller("pois")
+@UseFilters(POIExceptionFilter)
 export class POIController {
   constructor(private readonly poiService: POIService) {}
 
+  // =====================================================
+  // HU05 – Alta de POI por coordenadas
+  // =====================================================
   @Post()
   async create(@Body() body: CreatePOIDto) {
-    try {
-      return await this.poiService.createPOI(
-        body.correo,
-        body.nombre,
-        body.latitud,
-        body.longitud
-      );
-    } catch (error) {
-      if (
-        error instanceof InvalidPOINameError ||
-        error instanceof DuplicatePOINameError ||
-        error instanceof InvalidCoordinatesFormatError
-      ) {
-        throw new BadRequestException(error.message);
-      }
-
-      if (error instanceof AuthenticationRequiredError) {
-        throw new UnauthorizedException(error.message);
-      }
-
-      if (error instanceof GeocodingServiceUnavailableError) {
-        throw new ServiceUnavailableException(error.message);
-      }
-
-      if (error instanceof DatabaseConnectionError) {
-        throw new InternalServerErrorException(error.message);
-      }
-
-      throw error;
-    }
+    return this.poiService.createPOI(
+      body.correo,
+      body.nombre,
+      body.latitud,
+      body.longitud
+    );
   }
+
   // =====================================================
   // HU07 – Consulta de lista de lugares de interés
   // =====================================================
   @Get()
   async list(@Query("correo") correo: string) {
-    try {
-      return await this.poiService.listByUser(correo);
-    } catch (error) {
-      if (error instanceof AuthenticationRequiredError) {
-        throw new UnauthorizedException(error.message);
-      }
-
-      if (error instanceof DatabaseConnectionError) {
-        throw new InternalServerErrorException(error.message);
-      }
-
-      throw error;
-    }
+    return this.poiService.listByUser(correo);
   }
-   @Delete(":id")
+
+  // =====================================================
+  // HU08 – Borrado de POI
+  // =====================================================
+  @Delete(":id")
   async deletePOI(
     @Param("id") id: string,
     @Query("correo") correo: string
   ) {
-    try {
-      await this.poiService.deletePOI(correo, id);
-      return { ok: true };
-    } catch (error) {
-      if (error instanceof AuthenticationRequiredError) {
-        throw new UnauthorizedException(error.message);
-      }
-
-      if (error instanceof PlaceOfInterestNotFoundError) {
-        throw new NotFoundException(error.message);
-      }
-
-      if (error instanceof DatabaseConnectionError) {
-        throw new InternalServerErrorException(error.message);
-      }
-
-      throw error;
-    }
+    await this.poiService.deletePOI(correo, id);
+    return { ok: true };
   }
 }

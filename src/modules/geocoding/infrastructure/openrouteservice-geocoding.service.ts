@@ -1,42 +1,49 @@
 import { Injectable } from "@nestjs/common";
 import { GeocodingService } from "../application/geocoding.service";
 import {
-  GeocodingToponymNotFoundError,
   GeocodingServiceUnavailableError,
-} from "../../poi/domain/errors";
+  GeocodingToponymNotFoundError,
+} from "../domain/errors";
 
 @Injectable()
 export class OpenRouteServiceGeocodingService implements GeocodingService {
   private readonly apiKey = process.env.OPENROUTESERVICE_API_KEY;
 
-  async getToponimo(latitud: number, longitud: number): Promise<string> {
-    if (!this.apiKey) {
-      throw new Error("GeocodingServiceUnavailable");
-    }
-
-    const url = `https://api.openrouteservice.org/geocode/reverse?api_key=${this.apiKey}&point.lat=${latitud}&point.lon=${longitud}`;
-
+  private async fetchJson(url: string): Promise<any> {
     let response: Response;
 
     try {
       response = await fetch(url);
     } catch {
-      throw new Error("GeocodingServiceUnavailable");
+      throw new GeocodingServiceUnavailableError();
     }
 
     if (!response.ok) {
-      throw new Error("GeocodingServiceUnavailable");
+      throw new GeocodingServiceUnavailableError();
     }
 
-    const data: any = await response.json();
+    return response.json();
+  }
+
+  async getToponimo(latitud: number, longitud: number): Promise<string> {
+    if (!this.apiKey) {
+      throw new GeocodingServiceUnavailableError();
+    }
+
+    const url =
+      `https://api.openrouteservice.org/geocode/reverse?` +
+      `api_key=${this.apiKey}&point.lat=${latitud}&point.lon=${longitud}`;
+
+    const data = await this.fetchJson(url);
 
     if (!data?.features?.length) {
-      throw new Error("GeocodingServiceUnavailable");
+      throw new GeocodingToponymNotFoundError();
     }
 
     return data.features[0].properties.label;
   }
-   async getCoordinatesFromToponym(
+
+  async getCoordinatesFromToponym(
     toponimo: string
   ): Promise<{ latitud: number; longitud: number }> {
     if (!this.apiKey) {
@@ -47,25 +54,12 @@ export class OpenRouteServiceGeocodingService implements GeocodingService {
       `https://api.openrouteservice.org/geocode/search?` +
       `api_key=${this.apiKey}&text=${encodeURIComponent(toponimo)}`;
 
-    let response: Response;
+    const data = await this.fetchJson(url);
 
-    try {
-      response = await fetch(url);
-    } catch {
-      throw new GeocodingServiceUnavailableError();
-    }
-
-    if (!response.ok) {
-      throw new GeocodingServiceUnavailableError();
-    }
-
-    const data: any = await response.json();
-
-    if (!data?.features || data.features.length === 0) {
+    if (!data?.features?.length) {
       throw new GeocodingToponymNotFoundError();
     }
 
-    // 🔑 La fuente de verdad de las coordenadas es el search
     const [lng, lat] = data.features[0].geometry.coordinates;
 
     return {

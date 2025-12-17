@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, BadRequestException } from '@nestjs/common';
 import { GeocodingService } from '../application/geocoding.service';
 
 @Controller('geocoding')
@@ -7,25 +7,30 @@ export class GeocodingController {
 
   @Get('reverse')
   async reverseGeocoding(
-    @Query('lat') lat: string, 
+    @Query('lat') lat: string,
     @Query('lng') lng: string
   ) {
-    // Llamamos al método del servicio
+    const latNum = Number(lat);
+    const lngNum = Number(lng);
+
+    if (!lat || !lng || isNaN(latNum) || isNaN(lngNum)) {
+      throw new BadRequestException('Coordenadas inválidas');
+    }
+
     const toponimo = await this.geocodingService.getToponimo(
-      parseFloat(lat), 
-      parseFloat(lng)
+      latNum,
+      lngNum
     );
+
     return { ok: true, toponimo };
   }
-  @Get("search")
+
+  @Get('search')
   async geocodingByToponym(
-    @Query("q") q: string
+    @Query('q') q: string
   ) {
     if (!q || !q.trim()) {
-      return {
-        ok: false,
-        error: "El topónimo es obligatorio",
-      };
+      throw new BadRequestException('El topónimo es obligatorio');
     }
 
     const { latitud, longitud } =
@@ -37,5 +42,4 @@ export class GeocodingController {
       lng: longitud,
     };
   }
-
 }

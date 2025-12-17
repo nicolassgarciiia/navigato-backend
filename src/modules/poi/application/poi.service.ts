@@ -4,16 +4,14 @@ import { POI } from "../domain/poi.entity";
 import { POIRepository } from "../domain/poi.repository";
 import { UserRepository } from "../../user/domain/user.repository";
 import { GeocodingService } from "../../geocoding/application/geocoding.service";
-import { PlaceOfInterestNotFoundError } from "../domain/errors";
 
 import {
   InvalidPOINameError,
   DuplicatePOINameError,
   InvalidCoordinatesFormatError,
   AuthenticationRequiredError,
-  GeocodingServiceUnavailableError,
   DatabaseConnectionError,
-  GeocodingToponymNotFoundError,
+  PlaceOfInterestNotFoundError,
 } from "../domain/errors";
 
 @Injectable()
@@ -24,69 +22,39 @@ export class POIService {
     private readonly geocodingService: GeocodingService
   ) {}
 
+  // ======================================================
+  // HU05 – Alta de POI por coordenadas
+  // ======================================================
   async createPOI(
     userEmail: string,
     nombre: string,
     latitud: number,
     longitud: number
   ): Promise<POI> {
-    // 1. Usuario autenticado
-    const user = await this.userRepository.findByEmail(userEmail);
-    if (!user) {
-      throw new AuthenticationRequiredError();
-    }
+    const user = await this.getAuthenticatedUser(userEmail);
 
-    // 2. Nombre válido
-    if (!nombre || nombre.trim().length < 3) {
-      throw new InvalidPOINameError();
-    }
+    this.validateName(nombre);
+    await this.ensureNameNotDuplicated(user.id, nombre);
 
-    // 3. Nombre no duplicado
-    const duplicated = await this.poiRepository.findByUserAndName(
-      user.id,
-      nombre
+    this.validateCoordinates(latitud, longitud);
+
+    const toponimo = await this.geocodingService.getToponimo(
+      latitud,
+      longitud
     );
-    if (duplicated) {
-      throw new DuplicatePOINameError();
-    }
 
-    // 4. Coordenadas válidas
-    if (
-      latitud < -90 ||
-      latitud > 90 ||
-      longitud < -180 ||
-      longitud > 180
-    ) {
-      throw new InvalidCoordinatesFormatError();
-    }
-
-    // 5. Geocoding
-    let toponimo: string;
-    try {
-      toponimo = await this.geocodingService.getToponimo(latitud, longitud);
-    } catch {
-      throw new GeocodingServiceUnavailableError();
-    }
-
-    // 6. Crear entidad POI
-    const poi = new POI({
-      id: randomUUID(),
+    const poi = this.createPOIEntity({
       nombre,
       latitud,
       longitud,
       toponimo,
-      favorito: false,
     });
 
-    // 7. Persistencia
-    try {
-      await this.poiRepository.save(poi, user.id);
-    } catch {
-      throw new DatabaseConnectionError();
-    }
+    await this.savePOI(poi, user.id);
 
     return poi;
   }
+
   // ======================================================
   // HU06 – Alta de POI por topónimo
   // ======================================================
@@ -95,72 +63,45 @@ export class POIService {
     nombre: string,
     toponimo: string
   ): Promise<POI> {
-    const user = await this.userRepository.findByEmail(userEmail);
-    if (!user) {
-      throw new AuthenticationRequiredError();
-    }
+    const user = await this.getAuthenticatedUser(userEmail);
 
-    if (!nombre || nombre.trim().length < 3) {
-      throw new InvalidPOINameError();
-    }
+    this.validateName(nombre);
+    await this.ensureNameNotDuplicated(user.id, nombre);
 
-    const duplicated = await this.poiRepository.findByUserAndName(
-      user.id,
-      nombre
-    );
-    if (duplicated) {
-      throw new DuplicatePOINameError();
-    }
+    const { latitud, longitud } =
+      await this.geocodingService.getCoordinatesFromToponym(toponimo);
 
-    // 🔑 Geocoding: texto → coordenadas
-    let geoResult: { latitud: number; longitud: number };
-
-    try {
-      geoResult =
-        await this.geocodingService.getCoordinatesFromToponym(toponimo);
-    } catch (error) {
-      if (error instanceof GeocodingToponymNotFoundError) {
-        throw error;
-      }
-      throw new GeocodingServiceUnavailableError();
-    }
-
-    const poi = new POI({
-      id: randomUUID(),
+    const poi = this.createPOIEntity({
       nombre,
-      latitud: geoResult.latitud,
-      longitud: geoResult.longitud,
-      toponimo, 
-      favorito: false,
+      latitud,
+      longitud,
+      toponimo,
     });
 
-    try {
-      await this.poiRepository.save(poi, user.id);
-    } catch {
-      throw new DatabaseConnectionError();
-    }
+    await this.savePOI(poi, user.id);
 
     return poi;
   }
+
+  // ======================================================
+  // HU07 – Listado de POIs del usuario
+  // ======================================================
   async listByUser(userEmail: string): Promise<POI[]> {
-  // 1. Usuario autenticado
-  const user = await this.userRepository.findByEmail(userEmail);
-  if (!user) {
-    throw new AuthenticationRequiredError();
+    const user = await this.getAuthenticatedUser(userEmail);
+
+    try {
+      return await this.poiRepository.findByUser(user.id);
+    } catch {
+      throw new DatabaseConnectionError();
+    }
   }
 
-  // 2. Obtener lugares
-  try {
-    return await this.poiRepository.findByUser(user.id);
-  } catch {
-    throw new DatabaseConnectionError();
-  }
-}
-async deletePOI(userEmail: string, poiId: string): Promise<void> {
-    const user = await this.userRepository.findByEmail(userEmail);
-    if (!user) {
-      throw new AuthenticationRequiredError();
-    }
+  // ======================================================
+  // HU08 – Borrado de POI
+  // ======================================================
+  async deletePOI(userEmail: string, poiId: string): Promise<void> {
+    const user = await this.getAuthenticatedUser(userEmail);
+
     const poi = await this.poiRepository.findByIdAndUser(
       poiId,
       user.id
@@ -176,6 +117,64 @@ async deletePOI(userEmail: string, poiId: string): Promise<void> {
       throw new DatabaseConnectionError();
     }
   }
+
+  // ======================================================
+  // Helpers privados (reglas comunes)
+  // ======================================================
+
+  private async getAuthenticatedUser(userEmail: string) {
+    const user = await this.userRepository.findByEmail(userEmail);
+    if (!user) {
+      throw new AuthenticationRequiredError();
+    }
+    return user;
+  }
+
+  private validateName(nombre: string) {
+    if (!nombre || nombre.trim().length < 3) {
+      throw new InvalidPOINameError();
+    }
+  }
+
+  private validateCoordinates(latitud: number, longitud: number) {
+    if (
+      latitud < -90 ||
+      latitud > 90 ||
+      longitud < -180 ||
+      longitud > 180
+    ) {
+      throw new InvalidCoordinatesFormatError();
+    }
+  }
+
+  private async ensureNameNotDuplicated(userId: string, nombre: string) {
+    const duplicated = await this.poiRepository.findByUserAndName(
+      userId,
+      nombre
+    );
+    if (duplicated) {
+      throw new DuplicatePOINameError();
+    }
+  }
+
+  private createPOIEntity(data: {
+    nombre: string;
+    latitud: number;
+    longitud: number;
+    toponimo: string;
+  }): POI {
+    return new POI({
+      id: randomUUID(),
+      favorito: false,
+      ...data,
+    });
+  }
+
+  private async savePOI(poi: POI, userId: string) {
+    try {
+      await this.poiRepository.save(poi, userId);
+    } catch {
+      throw new DatabaseConnectionError();
+    }
+  }
 }
-
-
