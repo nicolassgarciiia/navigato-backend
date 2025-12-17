@@ -1,6 +1,8 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { UserModule } from "./modules/user/user.module";
+import { GeocodingModule } from "./modules/geocoding/geocoding.module";
+import { POIModule } from "./modules/poi/poi.module"; 
 
 @Module({
   imports: [
@@ -12,6 +14,8 @@ import { UserModule } from "./modules/user/user.module";
           : ".env",
     }),
     UserModule,
+    GeocodingModule, 
+    POIModule,       
   ],
 })
 export class AppModule {}

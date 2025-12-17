@@ -1,6 +1,6 @@
 import { Test } from "@nestjs/testing";
-import { UserModule } from "../../src/modules/user/user.module";
-import { UserService } from "../../src/modules/user/application/user.service";
+import { UserModule } from "../../../src/modules/user/user.module";
+import { UserService } from "../../../src/modules/user/application/user.service";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import * as dotenv from "dotenv";
 
