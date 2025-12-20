@@ -45,6 +45,20 @@ export class VehicleService {
   }
 
   // ======================================================
+  // HU10 – Listado de vehículos del usuario
+  // ======================================================
+  async listByUser(userEmail: string) {
+    const user = await this.getAuthenticatedUser(userEmail);
+
+    try {
+      return await this.vehicleRepository.findByUser(user.id);
+    } catch {
+      throw new DatabaseConnectionError();
+    }
+  }
+
+
+  // ======================================================
   // Helpers privados
   // ======================================================
 
