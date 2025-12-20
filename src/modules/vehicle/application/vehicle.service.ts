@@ -57,6 +57,14 @@ export class VehicleService {
     }
   }
 
+  // ======================================================
+  // HU11 – Borrado de vehículo
+  // ======================================================
+  async deleteVehicle(userEmail: string, vehicleId: string): Promise<void> {
+    throw new Error("Not implemented");
+  }
+
+
 
   // ======================================================
   // Helpers privados

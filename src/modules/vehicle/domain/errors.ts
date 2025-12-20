@@ -18,3 +18,11 @@ export class DatabaseConnectionError extends Error {
     this.name = "DatabaseConnectionError";
   }
 }
+
+export class VehicleNotFoundError extends Error {
+  constructor() {
+    super("VehicleNotFoundError");
+    this.name = "VehicleNotFoundError";
+  }
+}
+
