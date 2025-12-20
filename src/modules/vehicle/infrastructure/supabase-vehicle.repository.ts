@@ -33,4 +33,28 @@ export class SupabaseVehicleRepository implements VehicleRepository {
       throw error;
     }
   }
+
+  async findByUser(userId: string) {
+    const { data, error } = await this.supabase
+      .from("vehicles")
+      .select("*")
+      .eq("user_id", userId);
+
+    if (error) {
+      console.error("Supabase findByUser vehicle error:", error);
+      throw error;
+    }
+
+    return (data ?? []).map(
+      (row: any) =>
+        new Vehicle({
+          id: row.id,
+          nombre: row.nombre,
+          matricula: row.matricula,
+          tipo: row.tipo,
+          consumo: Number(row.consumo),
+          favorito: row.favorito,
+        })
+    );
+  }
 }
