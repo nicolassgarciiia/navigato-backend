@@ -80,6 +80,18 @@ export class VehicleService {
     }
   }
 
+  // ======================================================
+  // HU12 – Modificar vehículo
+  // ======================================================
+  async updateVehicle(
+    userEmail: string,
+    vehicleId: string,
+    consumo: number
+  ): Promise<void> {
+    throw new Error("Not implemented");
+  }
+
+
 
 
 
