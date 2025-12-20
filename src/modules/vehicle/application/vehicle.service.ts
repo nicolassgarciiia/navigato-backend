@@ -9,6 +9,7 @@ import {
   AuthenticationRequiredError,
   DatabaseConnectionError,
   InvalidVehicleConsumptionError,
+  VehicleNotFoundError
 } from "../domain/errors";
 
 @Injectable()
@@ -61,8 +62,24 @@ export class VehicleService {
   // HU11 – Borrado de vehículo
   // ======================================================
   async deleteVehicle(userEmail: string, vehicleId: string): Promise<void> {
-    throw new Error("Not implemented");
+    const user = await this.getAuthenticatedUser(userEmail);
+
+    const vehicle = await this.vehicleRepository.findByIdAndUser(
+      vehicleId,
+      user.id
+    );
+
+    if (!vehicle) {
+      throw new VehicleNotFoundError();
+    }
+
+    try {
+      await this.vehicleRepository.delete(vehicleId);
+    } catch {
+      throw new DatabaseConnectionError();
+    }
   }
+
 
 
 
