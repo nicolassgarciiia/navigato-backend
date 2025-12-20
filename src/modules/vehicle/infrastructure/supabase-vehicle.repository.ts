@@ -57,4 +57,44 @@ export class SupabaseVehicleRepository implements VehicleRepository {
         })
     );
   }
+
+  async findByIdAndUser(
+    vehicleId: string,
+    userId: string
+  ): Promise<Vehicle | null> {
+    const { data, error } = await this.supabase
+      .from("vehicles")
+      .select("*")
+      .eq("id", vehicleId)
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Supabase findByIdAndUser vehicle error:", error);
+      throw error;
+    }
+
+    if (!data) return null;
+
+    return new Vehicle({
+      id: data.id,
+      nombre: data.nombre,
+      matricula: data.matricula,
+      tipo: data.tipo,
+      consumo: Number(data.consumo),
+      favorito: data.favorito,
+    });
+  }
+
+  async delete(vehicleId: string): Promise<void> {
+    const { error } = await this.supabase
+      .from("vehicles")
+      .delete()
+      .eq("id", vehicleId);
+
+    if (error) {
+      console.error("Supabase delete vehicle error:", error);
+      throw error;
+    }
+  }
 }
