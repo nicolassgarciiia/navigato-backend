@@ -44,6 +44,10 @@ export class VehicleService {
     return vehicle;
   }
 
+  async listByUser(userEmail: string) {
+    throw new Error("Not implemented");
+  }
+
   // ======================================================
   // Helpers privados
   // ======================================================
