@@ -10,7 +10,7 @@ export class SupabaseVehicleRepository implements VehicleRepository {
   constructor() {
     this.supabase = createClient(
       process.env.SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE! // IMPORTANTE: service role
+      process.env.SUPABASE_SERVICE_ROLE!
     );
   }
 
@@ -70,7 +70,6 @@ export class SupabaseVehicleRepository implements VehicleRepository {
       .maybeSingle();
 
     if (error) {
-      console.error("Supabase findByIdAndUser vehicle error:", error);
       throw error;
     }
 
@@ -97,4 +96,17 @@ export class SupabaseVehicleRepository implements VehicleRepository {
       throw error;
     }
   }
+
+  async updateVehicle(vehicleId: string, consumo: number): Promise<void> {
+    const { error } = await this.supabase
+      .from("vehicles")
+      .update({ consumo })
+      .eq("id", vehicleId);
+
+    if (error) {
+      console.error("Supabase update vehicle error:", error);
+      throw error;
+    }
+  }
+
 }
