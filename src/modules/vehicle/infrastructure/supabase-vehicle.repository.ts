@@ -109,4 +109,14 @@ export class SupabaseVehicleRepository implements VehicleRepository {
     }
   }
 
+  async setFavorite(vehicleId: string, favorito: boolean): Promise<void> {
+    const { error } = await this.supabase
+      .from("vehicles")
+      .update({ favorito })
+      .eq("id", vehicleId);
+
+    if (error) {
+      throw error;
+    }
+  }
 }

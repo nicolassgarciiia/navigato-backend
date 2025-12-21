@@ -119,10 +119,23 @@ export class VehicleService {
     vehicleId: string,
     favorito: boolean
   ): Promise<void> {
-    throw new Error("Not implemented");
+
+    const user = await this.userRepository.findByEmail(userEmail);
+    if (!user) {
+      throw new Error("AuthenticationRequiredError");
+    }
+
+    try {
+      await this.vehicleRepository.findByIdAndUser(vehicleId, user.id);
+    } catch {
+      throw new Error("VehicleNotFoundError");
+    }
+    
+    await this.vehicleRepository.setFavorite(vehicleId, favorito);
   }
 
-  
+
+
 
 
   // ======================================================
