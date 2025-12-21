@@ -80,7 +80,49 @@ export class VehicleService {
     }
   }
 
+  async updateVehicle(
+    userEmail: string,
+    vehicleId: string,
+    consumo: number
+  ): Promise<void> {
 
+    // 1️⃣ Consumo inválido
+    if (consumo < 0) {
+      throw new Error("InvalidVehicleConsumptionError");
+    }
+
+    // 2️⃣ Usuario autenticado
+    const user = await this.userRepository.findByEmail(userEmail);
+    if (!user) {
+      throw new Error("AuthenticationRequiredError");
+    }
+
+    let vehicle: Vehicle | null;
+
+    try {
+      vehicle = await this.vehicleRepository.findByIdAndUser(
+        vehicleId,
+        user.id
+      );
+    } catch{
+      throw new Error("VehicleNotFoundError");
+    }
+
+    await this.vehicleRepository.updateVehicle(vehicleId, consumo);
+  }
+
+  // ======================================================
+  // HU20 – Marcar vehículo como favorito
+  // ======================================================
+  async setVehicleFavorite(
+    userEmail: string,
+    vehicleId: string,
+    favorito: boolean
+  ): Promise<void> {
+    throw new Error("Not implemented");
+  }
+
+  
 
 
   // ======================================================
