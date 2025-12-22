@@ -1,127 +1,98 @@
 import { Test } from "@nestjs/testing";
-import { POIModule } from "../../../src/modules/poi/poi.module";
-import { POIService } from "../../../src/modules/poi/application/poi.service";
+import { VehicleModule } from "../../../src/modules/vehicle/vehicle.module";
+import { VehicleService } from "../../../src/modules/vehicle/application/vehicle.service";
 import { UserRepository } from "../../../src/modules/user/domain/user.repository";
-import { POIRepository } from "../../../src/modules/poi/domain/poi.repository";
-import { GeocodingService } from "../../../src/modules/geocoding/application/geocoding.service";
+import { VehicleRepository } from "../../../src/modules/vehicle/domain/vehicle.repository";
 
-describe("HU05 – Alta de POI con coordenadas (INTEGRATION - mocks)", () => {
-  let poiService: POIService;
+describe("HU09 – Alta de vehículo (INTEGRATION - mocks)", () => {
+  let vehicleService: VehicleService;
 
-  const email = "hu05_integration@test.com";
+  const email = "hu09_integration@test.com";
 
   // ===== MOCKS =====
   const mockUser = {
-    id: 101,
+    id: "user-123",
     nombre: "Usuario Integracion",
     correo: email,
-    listaLugares: [],
   };
 
   const mockUserRepository = {
     findByEmail: jest.fn(),
-    save: jest.fn(),
-    update: jest.fn(),
-    deleteByEmail: jest.fn(),
   };
 
-  const mockPOIRepository = {
-    findByUserAndName: jest.fn(),
+  const mockVehicleRepository = {
     save: jest.fn(),
-  };
-
-  const mockGeocodingService = {
-    getToponimo: jest.fn(),
   };
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [POIModule],
+      imports: [VehicleModule],
     })
       .overrideProvider(UserRepository)
       .useValue(mockUserRepository)
-      .overrideProvider(POIRepository)
-      .useValue(mockPOIRepository)
-      .overrideProvider(GeocodingService)
-      .useValue(mockGeocodingService)
+      .overrideProvider(VehicleRepository)
+      .useValue(mockVehicleRepository)
       .compile();
 
-    poiService = moduleRef.get(POIService);
+    vehicleService = moduleRef.get(VehicleService);
 
     jest.clearAllMocks();
 
     mockUserRepository.findByEmail.mockResolvedValue(mockUser);
-    mockPOIRepository.findByUserAndName.mockResolvedValue(null);
-    mockGeocodingService.getToponimo.mockResolvedValue(
-      "Calle Falsa 123, Ciudad Test"
-    );
-    mockPOIRepository.save.mockResolvedValue(undefined);
+    mockVehicleRepository.save.mockResolvedValue(undefined);
   });
 
   // ======================================
-  // HU05_E01 – Escenario válido
+  // HU09_E01 – Escenario válido
   // ======================================
-  test("HU05_E01 – Alta de POI con coordenadas válidas", async () => {
-    const poi = await poiService.createPOI(
+  test("HU09_E01 – Alta de vehículo con datos válidos", async () => {
+    const vehicle = await vehicleService.createVehicle(
       email,
-      "Casa",
-      39.9869,
-      -0.0513
+      "Coche familiar",
+      "7750LHF",
+      "COMBUSTION",
+      6.5
     );
 
-    expect(poi).toBeDefined();
-    expect(poi.nombre).toBe("Casa");
-    expect(poi.latitud).toBe(39.9869);
-    expect(poi.longitud).toBe(-0.0513);
-    expect(poi.toponimo).toBeDefined();
-    expect(poi.favorito).toBe(false);
+    expect(vehicle).toBeDefined();
+    expect(vehicle.nombre).toBe("Coche familiar");
+    expect(vehicle.matricula).toBe("7750LHF");
+    expect(vehicle.tipo).toBe("COMBUSTION");
+    expect(vehicle.consumo).toBe(6.5);
+    expect(vehicle.favorito).toBe(false);
 
     expect(mockUserRepository.findByEmail).toHaveBeenCalledTimes(1);
-    expect(mockPOIRepository.findByUserAndName).toHaveBeenCalledTimes(1);
-    expect(mockGeocodingService.getToponimo).toHaveBeenCalledTimes(1);
-    expect(mockPOIRepository.save).toHaveBeenCalledTimes(1);
+    expect(mockVehicleRepository.save).toHaveBeenCalledTimes(1);
   });
 
   // ======================================
-  // HU05_E02 – Coordenadas inválidas
+  // HU09_E02 – Consumo inválido
   // ======================================
-  test("HU05_E02 – Coordenadas fuera de rango", async () => {
+  test("HU09_E02 – Consumo negativo → error", async () => {
     await expect(
-      poiService.createPOI(
+      vehicleService.createVehicle(
         email,
-        "Trabajo",
-        120.5432,
-        -250.0021
+        "Coche roto",
+        "1234ABC",
+        "COMBUSTION",
+        -10
       )
-    ).rejects.toThrow("InvalidCoordinatesFormatError");
+    ).rejects.toThrow("InvalidVehicleConsumptionError");
   });
 
   // ======================================
-  // HU05_E04 – Nombre inválido
+  // HU09_E03 – Usuario no autenticado
   // ======================================
-  test("HU05_E04 – Nombre inválido", async () => {
-    await expect(
-      poiService.createPOI(
-        email,
-        "Ca",
-        39.9,
-        -0.05
-      )
-    ).rejects.toThrow("InvalidPOINameError");
-  });
-
-  // ======================================
-  // HU05_E05 – Usuario no autenticado
-  // ======================================
-  test("HU05_E05 – Usuario no autenticado", async () => {
+  test("HU09_E03 – Usuario no autenticado", async () => {
     mockUserRepository.findByEmail.mockResolvedValue(null);
 
     await expect(
-      poiService.createPOI(
+      vehicleService.createVehicle(
         "no-existe@test.com",
-        "Casa",
-        39.9,
-        -0.05
+        "Coche",
+        "0000AAA",
+        "COMBUSTION",
+        5
       )
     ).rejects.toThrow("AuthenticationRequiredError");
   });
