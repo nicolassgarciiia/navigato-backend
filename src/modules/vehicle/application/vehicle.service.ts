@@ -9,8 +9,16 @@ import {
   AuthenticationRequiredError,
   DatabaseConnectionError,
   InvalidVehicleConsumptionError,
-  VehicleNotFoundError
+  VehicleNotFoundError,
 } from "../domain/errors";
+
+type UpdateVehicleData = {
+  nombre?: string;
+  matricula?: string;
+  tipo?: "COMBUSTION" | "ELECTRICO";
+  consumo?: number;
+  favorito?: boolean;
+};
 
 @Injectable()
 export class VehicleService {
@@ -40,7 +48,7 @@ export class VehicleService {
       consumo,
     });
 
-    await this.saveVehicle(vehicle, user.id);
+    await this.persistVehicle(vehicle, user.id);
 
     return vehicle;
   }
@@ -48,7 +56,7 @@ export class VehicleService {
   // ======================================================
   // HU10 – Listado de vehículos del usuario
   // ======================================================
-  async listByUser(userEmail: string) {
+  async listByUser(userEmail: string): Promise<Vehicle[]> {
     const user = await this.getAuthenticatedUser(userEmail);
 
     try {
@@ -62,67 +70,37 @@ export class VehicleService {
   // HU11 – Borrado de vehículo
   // ======================================================
   async deleteVehicle(userEmail: string, vehicleId: string): Promise<void> {
-    const user = await this.getAuthenticatedUser(userEmail);
-
-    const vehicle = await this.vehicleRepository.findByIdAndUser(
-      vehicleId,
-      user.id
-    );
-
-    if (!vehicle) {
-      throw new VehicleNotFoundError();
-    }
+    const vehicle = await this.getUserVehicleOrFail(userEmail, vehicleId);
 
     try {
-      await this.vehicleRepository.delete(vehicleId);
+      await this.vehicleRepository.delete(vehicle.id);
     } catch {
       throw new DatabaseConnectionError();
     }
   }
 
+  // ======================================================
+  // HU12 – Modificar vehículo (parcial)
+  // ======================================================
   async updateVehicle(
-  userEmail: string,
-  vehicleId: string,
-  data: {
-    nombre?: string;
-    matricula?: string;
-    tipo?: "COMBUSTION" | "ELECTRICO";
-    consumo?: number;
-    favorito?: boolean;
+    userEmail: string,
+    vehicleId: string,
+    data: UpdateVehicleData
+  ): Promise<void> {
+    const vehicle = await this.getUserVehicleOrFail(userEmail, vehicleId);
+
+    if (data.consumo !== undefined) {
+      this.validateConsumption(data.consumo);
+    }
+
+    Object.assign(vehicle, data);
+
+    try {
+      await this.vehicleRepository.update(vehicle);
+    } catch {
+      throw new DatabaseConnectionError();
+    }
   }
-): Promise<void> {
-  const user = await this.getAuthenticatedUser(userEmail);
-
-  let vehicle: Vehicle | null;
-  try {
-    vehicle = await this.vehicleRepository.findByIdAndUser(vehicleId, user.id);
-  } catch {
-    // según tus tests, esto cuenta como "no existe"
-    throw new VehicleNotFoundError();
-  }
-
-  if (!vehicle) {
-    throw new VehicleNotFoundError();
-  }
-
-  if (data.consumo !== undefined) {
-    this.validateConsumption(data.consumo);
-  }
-
-  Object.assign(vehicle, data);
-
-  try {
-    await this.vehicleRepository.update(vehicle); 
-  } catch {
-    throw new DatabaseConnectionError();
-  }
-}
-
-
-
-
-
-
 
   // ======================================================
   // Helpers privados
@@ -136,8 +114,30 @@ export class VehicleService {
     return user;
   }
 
+  private async getUserVehicleOrFail(
+    userEmail: string,
+    vehicleId: string
+  ): Promise<Vehicle> {
+    const user = await this.getAuthenticatedUser(userEmail);
+
+    let vehicle: Vehicle | null;
+    try {
+      vehicle = await this.vehicleRepository.findByIdAndUser(
+        vehicleId,
+        user.id
+      );
+    } catch {
+      throw new VehicleNotFoundError();
+    }
+
+    if (!vehicle) {
+      throw new VehicleNotFoundError();
+    }
+
+    return vehicle;
+  }
+
   private validateConsumption(consumo: number) {
-    // HU09_E02: consumo negativo -> error
     if (consumo == null || Number.isNaN(consumo) || consumo < 0) {
       throw new InvalidVehicleConsumptionError();
     }
@@ -156,7 +156,7 @@ export class VehicleService {
     });
   }
 
-  private async saveVehicle(vehicle: Vehicle, userId: string) {
+  private async persistVehicle(vehicle: Vehicle, userId: string) {
     try {
       await this.vehicleRepository.save(vehicle, userId);
     } catch {
