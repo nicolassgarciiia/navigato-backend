@@ -2,6 +2,11 @@ import {
   Controller,
   Post,
   Body,
+  Get, 
+  Query,
+  Delete,
+  Param,
+  Put,
 } from "@nestjs/common";
 import { VehicleService } from "./application/vehicle.service";
 
@@ -22,5 +27,41 @@ export class VehicleController {
       body.consumo
     );
   }
+  // =====================================================
+  // HU10 – Listar vehículos
+  // =====================================================
+  @Get()
+  async list(@Query("correo") correo: string) {
+    return this.vehicleService.listByUser(correo);
+  }
+  // =====================================================
+  // HU11 – Borrado de vehículo
+  // =====================================================
+  @Delete(":id")
+  async delete(
+    @Param("id") id: string,
+    @Query("correo") correo: string
+  ) {
+    await this.vehicleService.deleteVehicle(correo, id);
+    return { ok: true };
+  }
+  // =====================================================
+// HU12 – Actualizar vehículo
+// =====================================================
+@Put(":id")
+async update(
+  @Param("id") id: string,
+  @Query("correo") correo: string,
+  @Body() body: { consumo: number }
+) {
+  await this.vehicleService.updateVehicle(
+    correo,
+    id,
+    body.consumo
+  );
+
+  return { ok: true };
 }
+}
+
 
