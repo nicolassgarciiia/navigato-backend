@@ -1,7 +1,12 @@
+import { IsNumber, IsOptional, IsPositive, IsString } from "class-validator";
+
 export class UpdateVehicleDto {
+  @IsOptional()
+  @IsString()
   nombre?: string;
-  matricula?: string;
-  tipo?: "COMBUSTION" | "ELECTRICO";
+
+  @IsOptional()
+  @IsNumber()
+  @IsPositive()
   consumo?: number;
-  favorito?: boolean;
 }

@@ -49,21 +49,17 @@ export class VehicleController {
   // =====================================================
 // HU12 – Actualizar vehículo
 // =====================================================
-@Put(":id")
-async update(
-  @Param("id") id: string,
-  @Body() body: UpdateVehicleDto,
-  @Query("correo") correo: string
+
+@Put(':id')
+async updateVehicle(
+  @Param('id') id: string,
+  @Query('correo') correo: string,
+  @Body() dto: UpdateVehicleDto,
 ) {
-  await this.vehicleService.updateVehicle(
-    correo,
-    id,
-    body
-  );
-
-  return { ok: true };
+  await this.vehicleService.updateVehicle(correo, id, dto);
+}
 }
 
-}
+
 
 
