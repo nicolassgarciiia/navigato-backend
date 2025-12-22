@@ -81,35 +81,43 @@ export class VehicleService {
   }
 
   async updateVehicle(
-    userEmail: string,
-    vehicleId: string,
-    consumo: number
-  ): Promise<void> {
-
-    // 1️⃣ Consumo inválido
-    if (consumo < 0) {
-      throw new Error("InvalidVehicleConsumptionError");
-    }
-
-    // 2️⃣ Usuario autenticado
-    const user = await this.userRepository.findByEmail(userEmail);
-    if (!user) {
-      throw new Error("AuthenticationRequiredError");
-    }
-
-    let vehicle: Vehicle | null;
-
-    try {
-      vehicle = await this.vehicleRepository.findByIdAndUser(
-        vehicleId,
-        user.id
-      );
-    } catch{
-      throw new Error("VehicleNotFoundError");
-    }
-
-    await this.vehicleRepository.updateVehicle(vehicleId, consumo);
+  userEmail: string,
+  vehicleId: string,
+  data: {
+    nombre?: string;
+    matricula?: string;
+    tipo?: "COMBUSTION" | "ELECTRICO";
+    consumo?: number;
+    favorito?: boolean;
   }
+): Promise<void> {
+  const user = await this.getAuthenticatedUser(userEmail);
+
+  let vehicle: Vehicle | null;
+  try {
+    vehicle = await this.vehicleRepository.findByIdAndUser(vehicleId, user.id);
+  } catch {
+    // según tus tests, esto cuenta como "no existe"
+    throw new VehicleNotFoundError();
+  }
+
+  if (!vehicle) {
+    throw new VehicleNotFoundError();
+  }
+
+  if (data.consumo !== undefined) {
+    this.validateConsumption(data.consumo);
+  }
+
+  Object.assign(vehicle, data);
+
+  try {
+    await this.vehicleRepository.update(vehicle); 
+  } catch {
+    throw new DatabaseConnectionError();
+  }
+}
+
 
 
 

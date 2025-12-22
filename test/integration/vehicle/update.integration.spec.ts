@@ -26,7 +26,7 @@ describe("HU12 – Modificar vehículo (INTEGRATION - mocks)", () => {
 
   const mockVehicleRepository = {
     findByIdAndUser: jest.fn(),
-    updateVehicle: jest.fn(),
+    update: jest.fn(), // 👈 CAMBIO CLAVE
   };
 
   beforeEach(async () => {
@@ -44,6 +44,7 @@ describe("HU12 – Modificar vehículo (INTEGRATION - mocks)", () => {
     jest.clearAllMocks();
 
     mockUserRepository.findByEmail.mockResolvedValue(mockUser);
+
     mockVehicleRepository.findByIdAndUser.mockResolvedValue(
       new Vehicle({
         id: vehicleId,
@@ -54,56 +55,74 @@ describe("HU12 – Modificar vehículo (INTEGRATION - mocks)", () => {
         favorito: false,
       })
     );
-    mockVehicleRepository.updateVehicle.mockResolvedValue(undefined);
+
+    mockVehicleRepository.update.mockResolvedValue(undefined);
   });
 
   // ======================================
-  // HU12_E01 – Escenario válido
+  // HU12_E01 – Modificar consumo de vehículo
   // ======================================
   test("HU12_E01 – Modificar consumo de vehículo", async () => {
     await expect(
-      vehicleService.updateVehicle(email, vehicleId, 5.4)
+      vehicleService.updateVehicle(email, vehicleId, { consumo: 5.4 })
     ).resolves.toBeUndefined();
 
     expect(mockUserRepository.findByEmail).toHaveBeenCalledTimes(1);
     expect(mockVehicleRepository.findByIdAndUser).toHaveBeenCalledTimes(1);
-    expect(mockVehicleRepository.updateVehicle).toHaveBeenCalledTimes(1);
-    expect(mockVehicleRepository.updateVehicle).toHaveBeenCalledWith(
-      vehicleId,
-      5.4
-    );
+    expect(mockVehicleRepository.update).toHaveBeenCalledTimes(1);
+
+    const updatedVehicle = mockVehicleRepository.update.mock.calls[0][0];
+    expect(updatedVehicle.consumo).toBe(5.4);
   });
 
   // ======================================
-  // HU12_E02 – Consumo inválido
+  // HU12_E02 – Modificar nombre del vehículo
   // ======================================
-  test("HU12_E02 – Consumo negativo", async () => {
+  test("HU12_E02 – Modificar nombre del vehículo", async () => {
     await expect(
-      vehicleService.updateVehicle(email, vehicleId, -2)
-    ).rejects.toThrow("InvalidVehicleConsumptionError");
+      vehicleService.updateVehicle(email, vehicleId, { nombre: "Coche nuevo" })
+    ).resolves.toBeUndefined();
+
+    expect(mockVehicleRepository.update).toHaveBeenCalledTimes(1);
+
+    const updatedVehicle = mockVehicleRepository.update.mock.calls[0][0];
+    expect(updatedVehicle.nombre).toBe("Coche nuevo");
   });
 
   // ======================================
-  // HU12_E03 – Usuario no autenticado
+  // HU12_E03 – Consumo inválido
   // ======================================
-  test("HU12_E03 – Usuario no autenticado", async () => {
+  test("HU12_E03 – Consumo negativo", async () => {
+    await expect(
+      vehicleService.updateVehicle(email, vehicleId, { consumo: -2 })
+    ).rejects.toThrow("InvalidVehicleConsumptionError");
+
+    expect(mockVehicleRepository.update).not.toHaveBeenCalled();
+  });
+
+  // ======================================
+  // HU12_E04 – Usuario no autenticado
+  // ======================================
+  test("HU12_E04 – Usuario no autenticado", async () => {
     mockUserRepository.findByEmail.mockResolvedValue(null);
 
     await expect(
-      vehicleService.updateVehicle(email, vehicleId, 5)
+      vehicleService.updateVehicle(email, vehicleId, { consumo: 5 })
     ).rejects.toThrow("AuthenticationRequiredError");
+
+    expect(mockVehicleRepository.findByIdAndUser).not.toHaveBeenCalled();
   });
 
   // ======================================
-  // HU12_E04 – Vehículo no existe (UUID inválido o error repo)
+  // HU12_E05 – Vehículo no existe
   // ======================================
-  test("HU12_E04 – Vehículo no existe", async () => {
-    mockVehicleRepository.findByIdAndUser.mockRejectedValue(
-      new Error("invalid uuid")
-    );
+  test("HU12_E05 – Vehículo no existe", async () => {
+    mockVehicleRepository.findByIdAndUser.mockResolvedValue(null);
 
     await expect(
-      vehicleService.updateVehicle(email, "vehiculo-inexistente", 5)
+      vehicleService.updateVehicle(email, "vehiculo-inexistente", {
+        consumo: 5,
+      })
     ).rejects.toThrow("VehicleNotFoundError");
   });
 });
