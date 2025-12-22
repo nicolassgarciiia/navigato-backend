@@ -97,16 +97,23 @@ export class SupabaseVehicleRepository implements VehicleRepository {
     }
   }
 
-  async updateVehicle(vehicleId: string, consumo: number): Promise<void> {
-    const { error } = await this.supabase
-      .from("vehicles")
-      .update({ consumo })
-      .eq("id", vehicleId);
+  async update(vehicle: Vehicle): Promise<void> {
+  const { error } = await this.supabase
+    .from("vehicles")
+    .update({
+      nombre: vehicle.nombre,
+      matricula: vehicle.matricula,
+      tipo: vehicle.tipo,
+      consumo: vehicle.consumo,
+      favorito: vehicle.favorito,
+    })
+    .eq("id", vehicle.id);
 
-    if (error) {
-      console.error("Supabase update vehicle error:", error);
-      throw error;
-    }
+  if (error) {
+    console.error("Supabase update Vehicle error:", error);
+    throw error;
   }
+}
+
 
 }

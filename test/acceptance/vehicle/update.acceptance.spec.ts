@@ -14,7 +14,7 @@ describe("HU12 – Modificar vehículo (ATDD)", () => {
 
   const email = `hu12_${crypto.randomUUID()}@test.com`;
   const password = "ValidPass1!";
-  const vehicleId = crypto.randomUUID();
+  let vehicleId: string;
 
   // ======================================
   // SETUP
@@ -36,6 +36,17 @@ describe("HU12 – Modificar vehículo (ATDD)", () => {
       repetirContraseña: password,
       aceptaPoliticaPrivacidad: true,
     });
+
+    // GIVEN: vehículo existente
+    const vehicle = await vehicleService.createVehicle(
+      email,
+      "Coche inicial",
+      "1234-ABC",
+      "COMBUSTION",
+      6.5
+    );
+
+    vehicleId = vehicle.id;
   });
 
   afterAll(async () => {
@@ -43,38 +54,57 @@ describe("HU12 – Modificar vehículo (ATDD)", () => {
   });
 
   // ======================================
-  // HU12_E01 – Escenario válido
+  // HU12_E01 – Modificar consumo
   // ======================================
   test("HU12_E01 – Modificar consumo de vehículo", async () => {
     await expect(
-      vehicleService.updateVehicle(email, vehicleId, 5.4)
+      vehicleService.updateVehicle(email, vehicleId, { consumo: 5.4 })
     ).resolves.toBeUndefined();
+
+    const vehicles = await vehicleService.listByUser(email);
+    expect(vehicles[0].consumo).toBe(5.4);
   });
 
   // ======================================
-  // HU12_E02 – Consumo inválido
+  // HU12_E02 – Modificar nombre
   // ======================================
-  test("HU12_E02 – Consumo negativo → error", async () => {
+  test("HU12_E02 – Modificar nombre del vehículo", async () => {
     await expect(
-      vehicleService.updateVehicle(email, vehicleId, -3)
+      vehicleService.updateVehicle(email, vehicleId, { nombre: "Coche nuevo" })
+    ).resolves.toBeUndefined();
+
+    const vehicles = await vehicleService.listByUser(email);
+    expect(vehicles[0].nombre).toBe("Coche nuevo");
+  });
+
+  // ======================================
+  // HU12_E03 – Consumo inválido
+  // ======================================
+  test("HU12_E03 – Consumo negativo → error", async () => {
+    await expect(
+      vehicleService.updateVehicle(email, vehicleId, { consumo: -3 })
     ).rejects.toThrow("InvalidVehicleConsumptionError");
   });
 
   // ======================================
-  // HU12_E03 – Usuario no autenticado
+  // HU12_E04 – Usuario no autenticado
   // ======================================
-  test("HU12_E03 – Usuario no autenticado", async () => {
+  test("HU12_E04 – Usuario no autenticado", async () => {
     await expect(
-      vehicleService.updateVehicle("no-existe@test.com", vehicleId, 5)
+      vehicleService.updateVehicle("no-existe@test.com", vehicleId, {
+        consumo: 5,
+      })
     ).rejects.toThrow("AuthenticationRequiredError");
   });
 
   // ======================================
-  // HU12_E04 – Vehículo no existe
+  // HU12_E05 – Vehículo no existe
   // ======================================
-  test("HU12_E04 – Vehículo no existe", async () => {
+  test("HU12_E05 – Vehículo no existe", async () => {
     await expect(
-      vehicleService.updateVehicle(email, "vehiculo-inexistente", 5)
+      vehicleService.updateVehicle(email, "vehiculo-inexistente", {
+        consumo: 5,
+      })
     ).rejects.toThrow("VehicleNotFoundError");
   });
 });
