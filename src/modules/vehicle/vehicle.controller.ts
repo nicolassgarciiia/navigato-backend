@@ -9,6 +9,7 @@ import {
   Put,
 } from "@nestjs/common";
 import { VehicleService } from "./application/vehicle.service";
+import { UpdateVehicleDto } from "./dto/update-vehicle.dto";
 
 @Controller("vehicles")
 export class VehicleController {
@@ -51,17 +52,18 @@ export class VehicleController {
 @Put(":id")
 async update(
   @Param("id") id: string,
-  @Query("correo") correo: string,
-  @Body() body: { consumo: number }
+  @Body() body: UpdateVehicleDto,
+  @Query("correo") correo: string
 ) {
   await this.vehicleService.updateVehicle(
     correo,
     id,
-    body.consumo
+    body
   );
 
   return { ok: true };
 }
+
 }
 
 
