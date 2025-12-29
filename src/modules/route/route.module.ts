@@ -6,6 +6,7 @@ import { VehicleModule } from "../vehicle/vehicle.module";
 import { DummyRoutingAdapter } from "./infrastructure/adapters/dummy-routing.adapter";
 import { RouteRepository } from "./domain/route.repository";
 import { InMemoryRouteRepository } from "./domain/in-memory-route.repository";
+import { SupabaseRouteRepository } from "./infrastructure/supabase-route.repository";
 
 @Module({
   imports: [
@@ -17,7 +18,7 @@ import { InMemoryRouteRepository } from "./domain/in-memory-route.repository";
     RouteService,
     {
       provide: RouteRepository,
-      useClass: InMemoryRouteRepository
+      useClass: SupabaseRouteRepository
     },
     {
       provide: "RoutingAdapter",
