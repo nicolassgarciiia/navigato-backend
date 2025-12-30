@@ -37,7 +37,7 @@ describe("HU04 – Eliminar cuenta de usuario (ATDD)", () => {
   // ======================================================
   test("HU04_E01 – Eliminación exitosa de la cuenta", async () => {
     // Email dinámico
-    const email = `hu04e01@test.com`;
+    const email = `hu04_${crypto.randomUUID()}@test.com`;
     emailsToDelete.push(email);
 
     // 1. Crear usuario (Precondición)

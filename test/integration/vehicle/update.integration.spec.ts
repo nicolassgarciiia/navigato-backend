@@ -8,7 +8,7 @@ import { Vehicle } from "../../../src/modules/vehicle/domain/vehicle.entity";
 describe("HU12 – Modificar vehículo (INTEGRATION - mocks)", () => {
   let vehicleService: VehicleService;
 
-  const email = "hu12_integration@test.com";
+  const email = `hu12_${crypto.randomUUID()}@test.com`;;
   const userId = "user-123";
   const vehicleId = "vehicle-123";
 

@@ -38,7 +38,7 @@ describe("HU02 – Inicio de sesión (ATDD)", () => {
   // =======================================================
   test("HU02_E01 – Credenciales correctas → inicio correcto", async () => {
     // Email dinámico para evitar colisiones
-    const email = `hu02e01@test.com`;
+    const email = `hu02_${crypto.randomUUID()}@test.com`;
     emailsToDelete.push(email); // Agendar borrado
 
     // Precondición: Crear usuario

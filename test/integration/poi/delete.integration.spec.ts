@@ -10,7 +10,7 @@ describe("HU08 – Delete POI (Integration)", () => {
   let userRepository: jest.Mocked<UserRepository>;
   let poiRepository: jest.Mocked<POIRepository>;
 
-  const USER_EMAIL = "user@test.com";
+  const USER_EMAIL = `hu08_${crypto.randomUUID()}@test.com`;
   const USER_ID = "user-123";
   const POI_ID = "poi-456";
 

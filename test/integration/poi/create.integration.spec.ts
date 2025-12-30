@@ -8,7 +8,7 @@ import { GeocodingService } from "../../../src/modules/geocoding/application/geo
 describe("HU05 – Alta de POI con coordenadas (INTEGRATION - mocks)", () => {
   let poiService: POIService;
 
-  const email = "hu05_integration@test.com";
+  const email = `hu05_${crypto.randomUUID()}@test.com`;
 
   // ===== MOCKS =====
   const mockUser = {

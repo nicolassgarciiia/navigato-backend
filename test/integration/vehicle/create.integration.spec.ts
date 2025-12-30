@@ -7,7 +7,7 @@ import { VehicleRepository } from "../../../src/modules/vehicle/domain/vehicle.r
 describe("HU09 – Alta de vehículo (INTEGRATION - mocks)", () => {
   let vehicleService: VehicleService;
 
-  const email = "hu09_integration@test.com";
+  const email = `hu09_${crypto.randomUUID()}@test.com`;
 
   // ===== MOCKS =====
   const mockUser = {

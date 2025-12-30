@@ -53,7 +53,7 @@ describe("UserService – HU01 (Unit Testing con Mocks)", () => {
   // HU01_E01 – Registro válido (HAPPY PATH BLINDADO)
   // =================================================================
   test("HU01_E01 – Registro válido", async () => {
-    const email = "prueba_hu01_valido@test.com";
+    const email = `hu01_${crypto.randomUUID()}@test.com`;
     const rawPassword = "Prueba-34!";
 
     // 1. Configurar comportamiento de los Mocks (Arrange)

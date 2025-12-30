@@ -35,7 +35,7 @@ describe("HU03 – Cerrar sesión (ATDD)", () => {
   // ======================================================
   test("HU03_E01 – Cierre de sesión exitoso", async () => {
     // Email dinámico
-    const email = `hu03e01@test.com`;
+    const email = `hu03_${crypto.randomUUID()}@test.com`;
     emailsToDelete.push(email); 
 
     await service.register({

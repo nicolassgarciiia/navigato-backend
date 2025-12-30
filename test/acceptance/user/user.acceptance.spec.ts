@@ -48,7 +48,7 @@ describe("HU01 – Registro de usuario (ATDD)", () => {
   // HU01_E01 – Registro válido
   // ============================
   test("HU01_E01 – Registro válido", async () => {
-    const email = "prueba_hu01_valido@test.com";
+    const email = `hu01_${crypto.randomUUID()}@test.com`;
     
     // 1. Agendamos el borrado por si acaso falla el test a mitad
     emailsToDelete.push(email);
