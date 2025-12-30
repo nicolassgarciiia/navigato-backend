@@ -25,5 +25,6 @@ import { OpenRouteServiceGeocodingService } from "../geocoding/infrastructure/op
       useClass: OpenRouteServiceGeocodingService,
     },
   ],
+  exports: [POIRepository]
 })
 export class POIModule {}

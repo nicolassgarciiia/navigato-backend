@@ -4,6 +4,7 @@ import { UserModule } from "./modules/user/user.module";
 import { GeocodingModule } from "./modules/geocoding/geocoding.module";
 import { POIModule } from "./modules/poi/poi.module"; 
 import { VehicleModule } from "./modules/vehicle/vehicle.module";
+import { RouteModule } from "./modules/route/route.module";
 
 @Module({
   imports: [
@@ -17,7 +18,8 @@ import { VehicleModule } from "./modules/vehicle/vehicle.module";
     UserModule,
     GeocodingModule, 
     POIModule,
-    VehicleModule       
+    VehicleModule,
+    RouteModule       
   ],
 })
 export class AppModule {}
