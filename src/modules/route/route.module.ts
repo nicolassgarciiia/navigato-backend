@@ -7,8 +7,10 @@ import { DummyRoutingAdapter } from "./infrastructure/adapters/dummy-routing.ada
 import { RouteRepository } from "./domain/route.repository";
 import { InMemoryRouteRepository } from "./domain/in-memory-route.repository";
 import { SupabaseRouteRepository } from "./infrastructure/supabase-route.repository";
+import { RouteController } from "./route.controller";
 
 @Module({
+  controllers: [RouteController],
   imports: [
     UserModule,
     POIModule,
