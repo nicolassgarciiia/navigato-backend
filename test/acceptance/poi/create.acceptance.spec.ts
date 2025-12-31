@@ -5,6 +5,8 @@ import { UserModule } from "../../../src/modules/user/user.module";
 import { UserService } from "../../../src/modules/user/application/user.service";
 import * as dotenv from "dotenv";
 import { TEST_EMAIL} from "../../helpers/test-constants";
+import { randomUUID } from "crypto";
+
 
 dotenv.config();
 
@@ -41,9 +43,10 @@ describe("HU05 – Alta de POI con coordenadas (ATDD)", () => {
   // HU05_E01 – Escenario válido
   // ======================================
   test("HU05_E01 – Alta de POI con coordenadas válidas", async () => {
+    const poiName = `Casa-${randomUUID()}`;
     const poi = await poiService.createPOI(
-      TEST_EMAIL,
-      "Casa",
+    TEST_EMAIL,
+      poiName,
       39.9869,
       -0.0513
     );
@@ -51,7 +54,7 @@ describe("HU05 – Alta de POI con coordenadas (ATDD)", () => {
     poiIdsToDelete.push(poi.id);
 
     expect(poi).toBeDefined();
-    expect(poi.nombre).toBe("Casa");
+    expect(poi.nombre).toContain(poiName);
     expect(poi.latitud).toBe(39.9869);
     expect(poi.longitud).toBe(-0.0513);
     expect(poi.toponimo).toBeDefined();
