@@ -15,6 +15,5 @@ import { SupabaseUserRepository } from "./infrastructure/supabase-user.repositor
       useClass: SupabaseUserRepository,
     },
   ],
-  exports: [UserRepository],
 })
 export class UserModule {}
