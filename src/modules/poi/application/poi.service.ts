@@ -117,6 +117,10 @@ export class POIService {
       throw new DatabaseConnectionError();
     }
   }
+  async delete(poiId: string): Promise<void> {
+  await this.poiRepository.delete(poiId);
+  }
+
 
   // ======================================================
   // Helpers privados (reglas comunes)

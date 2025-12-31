@@ -3,8 +3,8 @@ import { UserModule } from "../../../src/modules/user/user.module";
 import { VehicleModule } from "../../../src/modules/vehicle/vehicle.module";
 import { VehicleService } from "../../../src/modules/vehicle/application/vehicle.service";
 import { UserService } from "../../../src/modules/user/application/user.service";
-import * as crypto from "crypto";
 import * as dotenv from "dotenv";
+import { TEST_EMAIL, TEST_PASSWORD } from "../../helpers/test-constants";
 
 dotenv.config();
 
@@ -12,13 +12,8 @@ describe("HU12 – Modificar vehículo (ATDD)", () => {
   let vehicleService: VehicleService;
   let userService: UserService;
 
-  const email = `hu12_${crypto.randomUUID()}@test.com`;
-  const password = "ValidPass1!";
-  let vehicleId: string;
+  let vehicleIdsToDelete: string[] = [];
 
-  // ======================================
-  // SETUP
-  // ======================================
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [UserModule, VehicleModule],
@@ -27,62 +22,81 @@ describe("HU12 – Modificar vehículo (ATDD)", () => {
     vehicleService = moduleRef.get(VehicleService);
     userService = moduleRef.get(UserService);
 
-    // GIVEN: usuario registrado
-    await userService.register({
-      nombre: "Usuario",
-      apellidos: "HU12",
-      correo: email,
-      contraseña: password,
-      repetirContraseña: password,
-      aceptaPoliticaPrivacidad: true,
-    });
-
-    // GIVEN: vehículo existente
-    const vehicle = await vehicleService.createVehicle(
-      email,
-      "Coche inicial",
-      "1234-ABC",
-      "COMBUSTION",
-      6.5
-    );
-
-    vehicleId = vehicle.id;
   });
 
-  afterAll(async () => {
-    await userService.deleteByEmail(email);
+  afterEach(async () => {
+    for (const id of vehicleIdsToDelete) {
+      try {
+        await vehicleService.delete(id);
+      } catch {
+      }
+    }
+    vehicleIdsToDelete = [];
   });
 
   // ======================================
   // HU12_E01 – Modificar consumo
   // ======================================
   test("HU12_E01 – Modificar consumo de vehículo", async () => {
+    const vehicle = await vehicleService.createVehicle(
+      TEST_EMAIL,
+      "Coche inicial",
+      "1234ABC",
+      "COMBUSTION",
+      6.5
+    );
+    vehicleIdsToDelete.push(vehicle.id);
+
     await expect(
-      vehicleService.updateVehicle(email, vehicleId, { consumo: 5.4 })
+      vehicleService.updateVehicle(TEST_EMAIL, vehicle.id, { consumo: 5.4 })
     ).resolves.toBeUndefined();
 
-    const vehicles = await vehicleService.listByUser(email);
-    expect(vehicles[0].consumo).toBe(5.4);
+    const vehicles = await vehicleService.listByUser(TEST_EMAIL);
+    const updated = vehicles.find((v) => v.id === vehicle.id);
+
+    expect(updated).toBeDefined();
+    expect(updated!.consumo).toBe(5.4);
   });
 
   // ======================================
   // HU12_E02 – Modificar nombre
   // ======================================
   test("HU12_E02 – Modificar nombre del vehículo", async () => {
+    const vehicle = await vehicleService.createVehicle(
+      TEST_EMAIL,
+      "Coche inicial",
+      "5678DEF",
+      "COMBUSTION",
+      6.5
+    );
+    vehicleIdsToDelete.push(vehicle.id);
+
     await expect(
-      vehicleService.updateVehicle(email, vehicleId, { nombre: "Coche nuevo" })
+      vehicleService.updateVehicle(TEST_EMAIL, vehicle.id, { nombre: "Coche nuevo" })
     ).resolves.toBeUndefined();
 
-    const vehicles = await vehicleService.listByUser(email);
-    expect(vehicles[0].nombre).toBe("Coche nuevo");
+    const vehicles = await vehicleService.listByUser(TEST_EMAIL);
+    const updated = vehicles.find((v) => v.id === vehicle.id);
+
+    expect(updated).toBeDefined();
+    expect(updated!.nombre).toBe("Coche nuevo");
   });
 
   // ======================================
   // HU12_E03 – Consumo inválido
   // ======================================
   test("HU12_E03 – Consumo negativo → error", async () => {
+    const vehicle = await vehicleService.createVehicle(
+      TEST_EMAIL,
+      "Coche",
+      "9999ZZZ",
+      "COMBUSTION",
+      6.5
+    );
+    vehicleIdsToDelete.push(vehicle.id);
+
     await expect(
-      vehicleService.updateVehicle(email, vehicleId, { consumo: -3 })
+      vehicleService.updateVehicle(TEST_EMAIL, vehicle.id, { consumo: -3 })
     ).rejects.toThrow("InvalidVehicleConsumptionError");
   });
 
@@ -91,9 +105,7 @@ describe("HU12 – Modificar vehículo (ATDD)", () => {
   // ======================================
   test("HU12_E04 – Usuario no autenticado", async () => {
     await expect(
-      vehicleService.updateVehicle("no-existe@test.com", vehicleId, {
-        consumo: 5,
-      })
+      vehicleService.updateVehicle("no-existe@test.com", "vehiculo-id", { consumo: 5 })
     ).rejects.toThrow("AuthenticationRequiredError");
   });
 
@@ -102,9 +114,7 @@ describe("HU12 – Modificar vehículo (ATDD)", () => {
   // ======================================
   test("HU12_E05 – Vehículo no existe", async () => {
     await expect(
-      vehicleService.updateVehicle(email, "vehiculo-inexistente", {
-        consumo: 5,
-      })
+      vehicleService.updateVehicle(TEST_EMAIL, "vehiculo-inexistente", { consumo: 5 })
     ).rejects.toThrow("VehicleNotFoundError");
   });
 });

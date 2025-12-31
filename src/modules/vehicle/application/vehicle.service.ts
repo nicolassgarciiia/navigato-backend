@@ -101,6 +101,10 @@ export class VehicleService {
       throw new DatabaseConnectionError();
     }
   }
+  async delete(vehicleId: string): Promise<void> {
+  await this.vehicleRepository.delete(vehicleId);
+}
+
 
   // ======================================================
   // Helpers privados

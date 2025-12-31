@@ -3,8 +3,8 @@ import { POIModule } from "../../../src/modules/poi/poi.module";
 import { POIService } from "../../../src/modules/poi/application/poi.service";
 import { UserModule } from "../../../src/modules/user/user.module";
 import { UserService } from "../../../src/modules/user/application/user.service";
-import * as crypto from "crypto";
 import * as dotenv from "dotenv";
+import { TEST_EMAIL} from "../../helpers/test-constants";
 
 dotenv.config();
 
@@ -12,8 +12,7 @@ describe("HU05 – Alta de POI con coordenadas (ATDD)", () => {
   let poiService: POIService;
   let userService: UserService;
 
-  const email = `hu05_${crypto.randomUUID()}@test.com`;
-  const password = "ValidPass1!";
+  let poiIdsToDelete: string[] = [];
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -23,19 +22,19 @@ describe("HU05 – Alta de POI con coordenadas (ATDD)", () => {
     poiService = moduleRef.get(POIService);
     userService = moduleRef.get(UserService);
 
-    await userService.register({
-      nombre: "Usuario",
-      apellidos: "HU05",
-      correo: email,
-      contraseña: password,
-      repetirContraseña: password,
-      aceptaPoliticaPrivacidad: true,
-    });
-
   });
 
-  afterAll(async () => {
-    await userService.deleteByEmail(email);
+  // ==================================================
+  // Limpieza SOLO de los POI creados en el test
+  // ==================================================
+  afterEach(async () => {
+    for (const poiId of poiIdsToDelete) {
+      try {
+        await poiService.delete(poiId);
+      } catch {
+      }
+    }
+    poiIdsToDelete = [];
   });
 
   // ======================================
@@ -43,11 +42,13 @@ describe("HU05 – Alta de POI con coordenadas (ATDD)", () => {
   // ======================================
   test("HU05_E01 – Alta de POI con coordenadas válidas", async () => {
     const poi = await poiService.createPOI(
-      email,
+      TEST_EMAIL,
       "Casa",
       39.9869,
       -0.0513
     );
+
+    poiIdsToDelete.push(poi.id);
 
     expect(poi).toBeDefined();
     expect(poi.nombre).toBe("Casa");
@@ -63,7 +64,7 @@ describe("HU05 – Alta de POI con coordenadas (ATDD)", () => {
   test("HU05_E02 – Coordenadas fuera de rango", async () => {
     await expect(
       poiService.createPOI(
-        email,
+        TEST_EMAIL,
         "Trabajo",
         120.5432,
         -250.0021
@@ -77,7 +78,7 @@ describe("HU05 – Alta de POI con coordenadas (ATDD)", () => {
   test("HU05_E04 – Nombre inválido", async () => {
     await expect(
       poiService.createPOI(
-        email,
+        TEST_EMAIL,
         "Ca",
         39.9,
         -0.05

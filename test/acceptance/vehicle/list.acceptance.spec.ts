@@ -3,8 +3,9 @@ import { UserModule } from "../../../src/modules/user/user.module";
 import { VehicleModule } from "../../../src/modules/vehicle/vehicle.module";
 import { VehicleService } from "../../../src/modules/vehicle/application/vehicle.service";
 import { UserService } from "../../../src/modules/user/application/user.service";
-import * as crypto from "crypto";
 import * as dotenv from "dotenv";
+import { TEST_EMAIL, TEST_PASSWORD } from "../../helpers/test-constants";
+
 
 dotenv.config();
 
@@ -12,12 +13,8 @@ describe("HU10 – Listado de vehículos (ATDD)", () => {
   let vehicleService: VehicleService;
   let userService: UserService;
 
-  const email = `hu10_${crypto.randomUUID()}@test.com`;
-  const password = "ValidPass1!";
+  let vehicleIdsToDelete: string[] = [];
 
-  // ======================================
-  // SETUP
-  // ======================================
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [UserModule, VehicleModule],
@@ -26,28 +23,45 @@ describe("HU10 – Listado de vehículos (ATDD)", () => {
     vehicleService = moduleRef.get(VehicleService);
     userService = moduleRef.get(UserService);
 
-    // GIVEN: usuario registrado
-    await userService.register({
-      nombre: "Usuario",
-      apellidos: "HU10",
-      correo: email,
-      contraseña: password,
-      repetirContraseña: password,
-      aceptaPoliticaPrivacidad: true,
-    });
   });
 
-  afterAll(async () => {
-    await userService.deleteByEmail(email);
+  afterEach(async () => {
+    for (const id of vehicleIdsToDelete) {
+      try {
+        await vehicleService.delete(id);
+      } catch {}
+    }
+    vehicleIdsToDelete = [];
   });
 
   // ======================================
-  // HU10_E01 – Escenario válido
+  // HU10_E01 – Listar vehículos del usuario
   // ======================================
   test("HU10_E01 – Listar vehículos del usuario", async () => {
-    const vehicles = await vehicleService.listByUser(email);
+    const v1 = await vehicleService.createVehicle(
+      TEST_EMAIL,
+      "Coche",
+      "1111AAA",
+      "COMBUSTION",
+      5
+    );
+    const v2 = await vehicleService.createVehicle(
+      TEST_EMAIL,
+      "Moto",
+      "2222BBB",
+      "COMBUSTION",
+      3
+    );
 
-    expect(Array.isArray(vehicles)).toBe(true);
+    vehicleIdsToDelete.push(v1.id, v2.id);
+
+    const vehicles = await vehicleService.listByUser(TEST_EMAIL);
+
+    const nombres = vehicles.map(v => v.nombre);
+
+    expect(nombres).toEqual(
+      expect.arrayContaining(["Coche", "Moto"])
+    );
   });
 
   // ======================================

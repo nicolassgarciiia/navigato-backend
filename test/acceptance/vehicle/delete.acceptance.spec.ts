@@ -1,45 +1,43 @@
 import { Test } from "@nestjs/testing";
-import { AppModule } from "../../../src/app.module";
+import { VehicleModule } from "../../../src/modules/vehicle/vehicle.module";
+import { UserModule } from "../../../src/modules/user/user.module";
 import { VehicleService } from "../../../src/modules/vehicle/application/vehicle.service";
 import { UserService } from "../../../src/modules/user/application/user.service";
 import { Vehicle } from "../../../src/modules/vehicle/domain/vehicle.entity";
 import { VehicleNotFoundError } from "../../../src/modules/vehicle/domain/errors";
 import * as dotenv from "dotenv";
+import { TEST_EMAIL } from "../../helpers/test-constants";
+import * as crypto from "crypto";
 
 dotenv.config();
-
-const TEST_USER_EMAIL = `hu11_user_${Date.now()}@test.com`;
-const VEHICLE_NAME_1 = `Vehículo a borrar ${Date.now()}`;
-const VEHICLE_NAME_2 = `Vehículo respaldo ${Date.now()}`;
 
 describe("HU11 – Borrado de vehículo (ATDD)", () => {
   let vehicleService: VehicleService;
   let userService: UserService;
 
+  let vehicleIdsToDelete: string[] = [];
+
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [AppModule],
+      imports: [UserModule, VehicleModule],
     }).compile();
 
     vehicleService = moduleRef.get(VehicleService);
     userService = moduleRef.get(UserService);
 
-    await userService.register({
-      nombre: "Test",
-      apellidos: "Vehicle",
-      correo: TEST_USER_EMAIL,
-      contraseña: "ValidPass1!",
-      repetirContraseña: "ValidPass1!",
-      aceptaPoliticaPrivacidad: true,
-    });
   });
 
-  afterAll(async () => {
-    try {
-      await userService.deleteAccount(TEST_USER_EMAIL);
-    } catch {
-      // ignore
+  // ==================================================
+  // Limpieza SOLO de los vehículos creados en el test
+  // ==================================================
+  afterEach(async () => {
+    for (const vehicleId of vehicleIdsToDelete) {
+      try {
+        await vehicleService.delete(vehicleId);
+      } catch {
+      }
     }
+    vehicleIdsToDelete = [];
   });
 
   // ======================================================
@@ -47,25 +45,31 @@ describe("HU11 – Borrado de vehículo (ATDD)", () => {
   // ======================================================
   test("HU11_E01 – Eliminación exitosa del vehículo", async () => {
     const vehicleToDelete: Vehicle = await vehicleService.createVehicle(
-      TEST_USER_EMAIL,
-      VEHICLE_NAME_1,
+      TEST_EMAIL,
+      "Vehículo a borrar",
       "1234ABC",
       "COMBUSTION",
       6.5
     );
+    vehicleIdsToDelete.push(vehicleToDelete.id);
 
     const backupVehicle: Vehicle = await vehicleService.createVehicle(
-      TEST_USER_EMAIL,
-      VEHICLE_NAME_2,
+      TEST_EMAIL,
+      "Vehículo respaldo",
       "5678DEF",
       "COMBUSTION",
       5.2
     );
+    vehicleIdsToDelete.push(backupVehicle.id);
 
-    await vehicleService.deleteVehicle(TEST_USER_EMAIL, vehicleToDelete.id);
+    await vehicleService.deleteVehicle(TEST_EMAIL, vehicleToDelete.id);
+
+    vehicleIdsToDelete = vehicleIdsToDelete.filter(
+      (id) => id !== vehicleToDelete.id
+    );
 
     const vehiclesAfterDeletion =
-      await vehicleService.listByUser(TEST_USER_EMAIL);
+      await vehicleService.listByUser(TEST_EMAIL);
 
     expect(
       vehiclesAfterDeletion.find((v) => v.id === vehicleToDelete.id)
@@ -74,9 +78,6 @@ describe("HU11 – Borrado de vehículo (ATDD)", () => {
     expect(
       vehiclesAfterDeletion.find((v) => v.id === backupVehicle.id)
     ).toBeDefined();
-
-    // cleanup del vehículo de respaldo
-    await vehicleService.deleteVehicle(TEST_USER_EMAIL, backupVehicle.id);
   });
 
   // ======================================================
@@ -85,7 +86,7 @@ describe("HU11 – Borrado de vehículo (ATDD)", () => {
   test("HU11_E02 – Vehículo no existe o ya fue eliminado", async () => {
     await expect(
       vehicleService.deleteVehicle(
-        TEST_USER_EMAIL,
+        TEST_EMAIL,
         crypto.randomUUID()
       )
     ).rejects.toThrow(VehicleNotFoundError);
@@ -95,10 +96,11 @@ describe("HU11 – Borrado de vehículo (ATDD)", () => {
   // HU11_E03 – Usuario no autenticado
   // ======================================================
   test("HU11_E03 – Intento de borrado con usuario no registrado", async () => {
-    const email = `no_registrado_${Date.now()}@test.com`;
-
     await expect(
-      vehicleService.deleteVehicle(email, crypto.randomUUID())
+      vehicleService.deleteVehicle(
+        "no_registrado@test.com",
+        crypto.randomUUID()
+      )
     ).rejects.toThrow("AuthenticationRequiredError");
   });
 });

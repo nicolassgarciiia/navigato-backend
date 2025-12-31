@@ -3,8 +3,8 @@ import { UserModule } from "../../../src/modules/user/user.module";
 import { VehicleModule } from "../../../src/modules/vehicle/vehicle.module";
 import { VehicleService } from "../../../src/modules/vehicle/application/vehicle.service";
 import { UserService } from "../../../src/modules/user/application/user.service";
-import * as crypto from "crypto";
 import * as dotenv from "dotenv";
+import { TEST_EMAIL} from "../../helpers/test-constants";
 
 dotenv.config();
 
@@ -12,12 +12,9 @@ describe("HU09 – Alta de vehículo (ATDD)", () => {
   let vehicleService: VehicleService;
   let userService: UserService;
 
-  const email = `hu09_${crypto.randomUUID()}@test.com`;
-  const password = "ValidPass1!";
+  // 🧹 Vehículos creados en cada test
+  let vehicleIdsToDelete: string[] = [];
 
-  // ======================================
-  // SETUP
-  // ======================================
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [UserModule, VehicleModule],
@@ -26,19 +23,19 @@ describe("HU09 – Alta de vehículo (ATDD)", () => {
     vehicleService = moduleRef.get(VehicleService);
     userService = moduleRef.get(UserService);
 
-    // GIVEN: usuario registrado
-    await userService.register({
-      nombre: "Usuario",
-      apellidos: "HU09",
-      correo: email,
-      contraseña: password,
-      repetirContraseña: password,
-      aceptaPoliticaPrivacidad: true,
-    });
   });
 
-  afterAll(async () => {
-    await userService.deleteByEmail(email);
+  // ==================================================
+  // Limpieza SOLO de los vehículos creados en el test
+  // ==================================================
+  afterEach(async () => {
+    for (const vehicleId of vehicleIdsToDelete) {
+      try {
+        await vehicleService.delete(vehicleId);
+      } catch {
+      }
+    }
+    vehicleIdsToDelete = [];
   });
 
   // ======================================
@@ -46,12 +43,14 @@ describe("HU09 – Alta de vehículo (ATDD)", () => {
   // ======================================
   test("HU09_E01 – Alta de vehículo con datos válidos", async () => {
     const vehicle = await vehicleService.createVehicle(
-      email,
+      TEST_EMAIL,
       "Coche familiar",
       "7750LHF",
       "COMBUSTION",
       6.5
     );
+
+    vehicleIdsToDelete.push(vehicle.id);
 
     expect(vehicle).toBeDefined();
     expect(vehicle.nombre).toBe("Coche familiar");
@@ -67,7 +66,7 @@ describe("HU09 – Alta de vehículo (ATDD)", () => {
   test("HU09_E02 – Consumo negativo → error", async () => {
     await expect(
       vehicleService.createVehicle(
-        email,
+        TEST_EMAIL,
         "Coche roto",
         "1234ABC",
         "COMBUSTION",
