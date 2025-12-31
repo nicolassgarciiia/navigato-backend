@@ -34,13 +34,19 @@ describe("HU17 – Guardar ruta (INTEGRATION)", () => {
       .compile();
 
     routeService = moduleRef.get(RouteService);
-
-    // simulamos que ya hay una ruta calculada
-    (routeService as any).lastCalculatedRoute = new Route({
-      id: "route-1",
-      distancia: 10000,
-      duracion: 600,
-    });
+    // @ts-ignore – acceso solo para test
+    routeService.lastCalculatedRoutes.set(
+      "user-1",
+      new Route({
+        id: "route-1",
+        distancia: 10000,
+        duracion: 600,
+        coordenadas: [],
+        origen: {} as any,
+        destino: {} as any,
+        metodoMovilidad: "vehiculo",
+      })
+    );
   });
 
   afterEach(() => {
