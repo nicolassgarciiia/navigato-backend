@@ -1,39 +1,52 @@
-import { Inject } from "@nestjs/common";
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import { UserRepository } from "../../user/domain/user.repository";
 import { POIRepository } from "../../poi/domain/poi.repository";
+import { VehicleRepository } from "../../vehicle/domain/vehicle.repository";
+import { RouteRepository } from "../domain/route.repository";
 import type { RoutingAdapter } from "../infrastructure/adapters/routing.adapter";
 import { Route } from "../domain/route.entity";
-import { VehicleRepository } from "../../vehicle/domain/vehicle.repository";
+import { SavedRoute } from "../domain/saved-route.entity";
+
+import {
+  AuthenticationRequiredError,
+  RouteNotCalculatedError,
+  InvalidPlaceOfInterestError,
+  VehicleNotFoundError,
+  NameAlreadyExistsError,
+  SavedRouteNotFoundError,
+  RoutingServiceUnavailableError,
+  FuelServiceUnavailableError,
+  CalorieServiceUnavailableError,
+  InvalidRouteTypeError,
+} from "../domain/errors";
+
 import { FuelCostStrategy } from "../infrastructure/strategies/fuel-cost.strategy";
 import { CalorieCostStrategy } from "../infrastructure/strategies/calorie-cost.strategy";
 import { FastestRouteStrategy } from "../infrastructure/strategies/fastest-route.strategy";
 import { ShortestRouteStrategy } from "../infrastructure/strategies/shortest-route.strategy";
 import { EconomicRouteStrategy } from "../infrastructure/strategies/economic-route.strategy";
-import { RouteRepository } from "../domain/route.repository";
-import { SavedRoute } from "../domain/saved-route.entity";
-
-
 
 @Injectable()
 export class RouteService {
+  /**
+   * Última ruta calculada por usuario
+   * (evita estado global y flaky tests)
+   */
+  private lastCalculatedRoutes = new Map<string, Route>();
 
-  private lastCalculatedRoute: Route | null = null;
   private fuelCostStrategy = new FuelCostStrategy();
   private calorieCostStrategy = new CalorieCostStrategy();
   private fastestRouteStrategy = new FastestRouteStrategy();
   private shortestRouteStrategy = new ShortestRouteStrategy();
   private economicRouteStrategy = new EconomicRouteStrategy();
 
-
-
   constructor(
-    private userRepository: UserRepository,
-    private poiRepository: POIRepository,
-    private vehicleRepository: VehicleRepository,
-    private routeRepository: RouteRepository,
+    private readonly userRepository: UserRepository,
+    private readonly poiRepository: POIRepository,
+    private readonly vehicleRepository: VehicleRepository,
+    private readonly routeRepository: RouteRepository,
     @Inject("RoutingAdapter")
-    private routingAdapter: RoutingAdapter
+    private readonly routingAdapter: RoutingAdapter
   ) {}
 
   // ======================================================
@@ -45,217 +58,168 @@ export class RouteService {
     destinoName: string,
     metodo: string
   ): Promise<Route> {
-
     const user = await this.userRepository.findByEmail(email);
-    if (!user) {
-      throw new Error("AuthenticationRequiredError");
-    }
+    if (!user) throw new AuthenticationRequiredError();
 
     const pois = await this.poiRepository.findByUser(user.id);
-
-    const origen = pois.find((p) => p.nombre === origenName);
-    const destino = pois.find((p) => p.nombre === destinoName);
+    const origen = pois.find(p => p.nombre === origenName);
+    const destino = pois.find(p => p.nombre === destinoName);
 
     if (!origen || !destino) {
-      throw new Error("InvalidPlaceOfInterestError");
+      throw new InvalidPlaceOfInterestError();
     }
 
     try {
-      const route = await this.routingAdapter.calculate(origen, destino, metodo);
-      this.lastCalculatedRoute = route;
+      const route = await this.routingAdapter.calculate(
+        origen,
+        destino,
+        metodo
+      );
+
+      this.lastCalculatedRoutes.set(user.id, route);
       return route;
     } catch {
-      throw new Error("RoutingServiceUnavailableError");
+      throw new RoutingServiceUnavailableError();
     }
   }
 
   // ======================================================
-// HU14 – Calcular coste de ruta en vehículo
-// ======================================================
-async calculateRouteCostWithVehicle(
-  email: string,
-  vehicleName: string
-) {
+  // HU14 – Calcular coste de ruta en vehículo
+  // ======================================================
+  async calculateRouteCostWithVehicle(
+    email: string,
+    vehicleName: string
+  ) {
+    const user = await this.userRepository.findByEmail(email);
+    if (!user) throw new AuthenticationRequiredError();
 
-  const user = await this.userRepository.findByEmail(email);
-  if (!user) {
-    throw new Error("AuthenticationRequiredError");
+    const vehicles = await this.vehicleRepository.findByUser(user.id);
+    const vehicle = vehicles.find(v => v.nombre === vehicleName);
+    if (!vehicle) throw new VehicleNotFoundError();
+
+    const route = this.lastCalculatedRoutes.get(user.id);
+    if (!route) throw new RouteNotCalculatedError();
+
+    try {
+      const cost = await this.fuelCostStrategy.calculate(route, vehicle);
+      route.coste = cost;
+      return cost;
+    } catch {
+      throw new FuelServiceUnavailableError();
+    }
   }
 
-  const vehicles = await this.vehicleRepository.findByUser(user.id);
-  const vehicle = vehicles.find((v) => v.nombre === vehicleName);
+  // ======================================================
+  // HU15 – Calcular coste calórico
+  // ======================================================
+  async calculateRouteCalories(email: string) {
+    const user = await this.userRepository.findByEmail(email);
+    if (!user) throw new AuthenticationRequiredError();
 
-  if (!vehicle) {
-    throw new Error("VehicleNotFoundError");
+    const route = this.lastCalculatedRoutes.get(user.id);
+    if (!route) throw new RouteNotCalculatedError();
+
+    try {
+      const cost = await this.calorieCostStrategy.calculate(route);
+      route.coste = cost;
+      return cost;
+    } catch {
+      throw new CalorieServiceUnavailableError();
+    }
   }
 
-  const route = this.lastCalculatedRoute;
-  if (!route) {
-    throw new Error("InvalidRouteError");
+  // ======================================================
+  // HU16 – Calcular ruta por tipo
+  // ======================================================
+  async calculateRouteByType(
+    email: string,
+    origenName: string,
+    destinoName: string,
+    metodo: string,
+    tipo: "rapida" | "corta" | "economica"
+  ): Promise<Route> {
+    const user = await this.userRepository.findByEmail(email);
+    if (!user) throw new AuthenticationRequiredError();
+
+    const pois = await this.poiRepository.findByUser(user.id);
+    const origen = pois.find(p => p.nombre === origenName);
+    const destino = pois.find(p => p.nombre === destinoName);
+
+    if (!origen || !destino) {
+      throw new InvalidPlaceOfInterestError();
+    }
+
+    try {
+      let route: Route;
+
+      switch (tipo) {
+        case "rapida":
+          route = await this.fastestRouteStrategy.calculate(origen, destino, metodo);
+          break;
+        case "corta":
+          route = await this.shortestRouteStrategy.calculate(origen, destino, metodo);
+          break;
+        case "economica":
+          route = await this.economicRouteStrategy.calculate(origen, destino, metodo);
+          break;
+        default:
+          throw new InvalidRouteTypeError();
+      }
+
+      this.lastCalculatedRoutes.set(user.id, route);
+      return route;
+    } catch {
+      throw new RoutingServiceUnavailableError();
+    }
   }
 
-  try {
-    const cost = await this.fuelCostStrategy.calculate(route, vehicle);
-    route.coste = cost;
-    return cost;
-  } catch {
-    throw new Error("FuelServiceUnavailableError");
-  }
-}
+  // ======================================================
+  // HU17 – Guardar ruta
+  // ======================================================
+  async saveRoute(email: string, name: string): Promise<SavedRoute> {
+    const user = await this.userRepository.findByEmail(email);
+    if (!user) throw new AuthenticationRequiredError();
 
-// ======================================================
-// HU15 – Calcular coste calórico de una ruta
-// ======================================================
-async calculateRouteCalories(email: string) {
+    const route = this.lastCalculatedRoutes.get(user.id);
+    if (!route) throw new RouteNotCalculatedError();
 
-  const user = await this.userRepository.findByEmail(email);
-  if (!user) {
-    throw new Error("AuthenticationRequiredError");
-  }
+    const existing = await this.routeRepository.findByName(user.id, name);
+    if (existing) throw new NameAlreadyExistsError();
 
-  if (!this.lastCalculatedRoute) {
-    throw new Error("InvalidRouteError");
-  }
+    const saved = new SavedRoute({
+      nombre: name,
+      route,
+      favorito: false,
+      fechaGuardado: new Date(),
+    });
 
-  try {
-    const cost = await this.calorieCostStrategy.calculate(
-      this.lastCalculatedRoute
-    );
-    this.lastCalculatedRoute.coste = cost;
-    return cost;
-  } catch {
-    throw new Error("CalorieServiceUnavailableError");
-  }
-}
+    await this.routeRepository.save(user.id, saved);
 
-// ======================================================
-// HU16 – Calcular ruta según criterio
-// ======================================================
-async calculateRouteByType(
-  email: string,
-  origenName: string,
-  destinoName: string,
-  metodo: string,
-  tipo: "rapida" | "corta" | "economica"
-): Promise<Route> {
+    this.lastCalculatedRoutes.delete(user.id);
 
-  const user = await this.userRepository.findByEmail(email);
-  if (!user) {
-    throw new Error("AuthenticationRequiredError");
+    return saved;
   }
 
-  const pois = await this.poiRepository.findByUser(user.id);
+  // ======================================================
+  // HU18 – Listar rutas guardadas
+  // ======================================================
+  async listSavedRoutes(email: string): Promise<SavedRoute[]> {
+    const user = await this.userRepository.findByEmail(email);
+    if (!user) throw new AuthenticationRequiredError();
 
-  const origen = pois.find(p => p.nombre === origenName);
-  const destino = pois.find(p => p.nombre === destinoName);
-
-  if (!origen || !destino) {
-    throw new Error("InvalidPlaceOfInterestError");
+    return this.routeRepository.findByUser(user.id);
   }
 
-  let route: Route;
+  // ======================================================
+  // HU19 – Eliminar ruta guardada
+  // ======================================================
+  async delete(email: string, name: string): Promise<void> {
+    const user = await this.userRepository.findByEmail(email);
+    if (!user) throw new AuthenticationRequiredError();
 
-  switch (tipo) {
-    case "rapida":
-      route = await this.fastestRouteStrategy.calculate(
-        origen,
-        destino,
-        metodo
-      );
-      break;
-    case "corta":
-      route = await this.shortestRouteStrategy.calculate(
-        origen,
-        destino,
-        metodo
-      );
-      break;
-    case "economica":
-      route = await this.economicRouteStrategy.calculate(
-        origen,
-        destino,
-        metodo
-      );
-      break;
-    default:
-      throw new Error("InvalidRouteTypeError");
+    const route = await this.routeRepository.findByName(user.id, name);
+    if (!route) throw new SavedRouteNotFoundError();
+
+    await this.routeRepository.delete(user.id, name);
   }
-
-  this.lastCalculatedRoute = route;
-  return route;
-}
-
-// ======================================================
-// HU17 – Guardar ruta
-// ======================================================
-async saveRoute(
-  email: string,
-  name: string
-) {
-
-  const user = await this.userRepository.findByEmail(email);
-  if (!user) {
-    throw new Error("AuthenticationRequiredError");
-  }
-
-  if (!this.lastCalculatedRoute) {
-    throw new Error("InvalidRouteError");
-  }
-
-  const existing = await this.routeRepository.findByName(
-    user.id,
-    name
-  );
-  if (existing) {
-    throw new Error("RouteAlreadyExistsError");
-  }
-
-  const saved = new SavedRoute({
-    nombre: name,
-    route: this.lastCalculatedRoute,
-    favorito: false,
-    fechaGuardado: new Date(),
-  });
-
-  await this.routeRepository.save(user.id, saved);
-  return saved;
-}
-
-// ======================================================
-// HU18 – Listar rutas guardadas
-// ======================================================
-async listSavedRoutes(email: string) {
-  const user = await this.userRepository.findByEmail(email);
-  if (!user) {
-    throw new Error("AuthenticationRequiredError");
-  }
-
-  return this.routeRepository.findByUser(user.id);
-}
-
-// ======================================================
-// HU19 – Eliminar ruta guardada
-// ======================================================
-async deleteSavedRoute(
-  email: string,
-  name: string
-): Promise<void> {
-
-  const user = await this.userRepository.findByEmail(email);
-  if (!user) {
-    throw new Error("AuthenticationRequiredError");
-  }
-
-  const route = await this.routeRepository.findByName(
-    user.id,
-    name
-  );
-  if (!route) {
-    throw new Error("RouteNotFoundError");
-  }
-
-  await this.routeRepository.delete(user.id, name);
-}
-
-
 }
