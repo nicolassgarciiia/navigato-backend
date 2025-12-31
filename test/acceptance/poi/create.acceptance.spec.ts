@@ -65,10 +65,11 @@ describe("HU05 – Alta de POI con coordenadas (ATDD)", () => {
   // HU05_E02 – Coordenadas inválidas
   // ======================================
   test("HU05_E02 – Coordenadas fuera de rango", async () => {
+    const poiName = `Trabajo-${randomUUID()}`;
     await expect(
       poiService.createPOI(
         TEST_EMAIL,
-        "Trabajo",
+        poiName,
         120.5432,
         -250.0021
       )
