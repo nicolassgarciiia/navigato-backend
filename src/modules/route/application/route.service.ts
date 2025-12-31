@@ -210,16 +210,29 @@ export class RouteService {
     return this.routeRepository.findByUser(user.id);
   }
 
+    // ======================================================
+  // HU19 – Eliminar ruta guardada (método oficial del caso de uso)
   // ======================================================
-  // HU19 – Eliminar ruta guardada
-  // ======================================================
-  async delete(email: string, name: string): Promise<void> {
+  async deleteSavedRoute(email: string, name: string): Promise<void> {
     const user = await this.userRepository.findByEmail(email);
-    if (!user) throw new AuthenticationRequiredError();
+    if (!user) {
+      throw new AuthenticationRequiredError();
+    }
 
     const route = await this.routeRepository.findByName(user.id, name);
-    if (!route) throw new SavedRouteNotFoundError();
+    if (!route) {
+      throw new SavedRouteNotFoundError();
+    }
 
     await this.routeRepository.delete(user.id, name);
   }
+
+  /**
+   * Alias auxiliar para tests / compatibilidad histórica
+   * (muchos tests llaman a routeService.delete(...))
+   */
+  async delete(email: string, name: string): Promise<void> {
+    return this.deleteSavedRoute(email, name);
+  }
+
 }
