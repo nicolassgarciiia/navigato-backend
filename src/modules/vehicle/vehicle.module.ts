@@ -3,10 +3,12 @@ import { VehicleController } from "./vehicle.controller";
 import { VehicleService } from "./application/vehicle.service";
 import { VehicleRepository } from "./domain/vehicle.repository";
 import { SupabaseVehicleRepository } from "./infrastructure/supabase-vehicle.repository";
-import { UserRepository } from "../user/domain/user.repository";
-import { SupabaseUserRepository } from "../user/infrastructure/supabase-user.repository";
+import { UserModule } from "../user/user.module";
 
 @Module({
+  imports: [
+    UserModule, 
+  ],
   controllers: [VehicleController],
   providers: [
     VehicleService,
@@ -14,10 +16,10 @@ import { SupabaseUserRepository } from "../user/infrastructure/supabase-user.rep
       provide: VehicleRepository,
       useClass: SupabaseVehicleRepository,
     },
-    {
-      provide: UserRepository,
-      useClass: SupabaseUserRepository,
-    },
+  ],
+  exports: [
+    VehicleRepository, 
+    VehicleService,
   ],
 })
 export class VehicleModule {}
