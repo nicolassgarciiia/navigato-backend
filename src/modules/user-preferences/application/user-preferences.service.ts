@@ -64,7 +64,23 @@ export class UserPreferencesService {
     userEmail: string,
     routeType: string
   ): Promise<void> {
-    throw new Error("Method not implemented.");
+    const user = await this.userRepository.findByEmail(userEmail);
+    if (!user) {
+      throw new AuthenticationRequiredError();
+    }
+
+    if (!VALID_ROUTE_TYPES.includes(routeType)) {
+      throw new InvalidRouteTypeError();
+    }
+
+    try {
+      await this.preferencesRepository.setDefaultRouteType(
+        user.id,
+        routeType
+      );
+    } catch {
+      throw new DatabaseConnectionError();
+    }
   }
 
   // ======================================================
