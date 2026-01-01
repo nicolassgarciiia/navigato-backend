@@ -59,31 +59,35 @@ export class SupabaseVehicleRepository implements VehicleRepository {
   }
 
   async findByIdAndUser(
-    vehicleId: string,
-    userId: string
-  ): Promise<Vehicle | null> {
-    const { data, error } = await this.supabase
-      .from("vehicles")
-      .select("*")
-      .eq("id", vehicleId)
-      .eq("user_id", userId)
-      .maybeSingle();
+  vehicleId: string,
+  userId: string
+): Promise<Vehicle | null> {
+  const { data, error } = await this.supabase
+    .from("vehicles")
+    .select("*")
+    .eq("id", vehicleId)
+    .eq("user_id", userId);
 
-    if (error) {
-      throw error;
-    }
-
-    if (!data) return null;
-
-    return new Vehicle({
-      id: data.id,
-      nombre: data.nombre,
-      matricula: data.matricula,
-      tipo: data.tipo,
-      consumo: Number(data.consumo),
-      favorito: data.favorito,
-    });
+  if (!data || data.length === 0) {
+    return null;
   }
+
+  if (error) {
+    throw new Error("DatabaseConnectionError");
+  }
+
+  const row = data[0];
+
+  return new Vehicle({
+    id: row.id,
+    nombre: row.nombre,
+    matricula: row.matricula,
+    tipo: row.tipo,
+    consumo: Number(row.consumo),
+    favorito: row.favorito,
+  });
+}
+
 
   async delete(vehicleId: string): Promise<void> {
     const { error } = await this.supabase
