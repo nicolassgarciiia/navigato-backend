@@ -1,7 +1,6 @@
 import { Test } from "@nestjs/testing";
 import { UserPreferencesService } from "../../../src/modules/user-preferences/application/user-preferences.service";
 import { UserPreferencesRepository } from "../../../src/modules/user-preferences/domain/user-preferences.repository";
-import { UserPreferences } from "../../../src/modules/user-preferences/domain/user-preferences.entity";
 import { UserRepository } from "../../../src/modules/user/domain/user.repository";
 import { VehicleRepository } from "../../../src/modules/vehicle/domain/vehicle.repository";
 
@@ -20,8 +19,7 @@ describe("HU21 – Establecer vehículo por defecto (INTEGRATION con mocks)", ()
   };
 
   const preferencesRepositoryMock = {
-    findByUserId: jest.fn(),
-    save: jest.fn(),
+    setDefaultVehicle: jest.fn().mockResolvedValue(undefined),
   };
 
   beforeEach(async () => {
@@ -30,7 +28,10 @@ describe("HU21 – Establecer vehículo por defecto (INTEGRATION con mocks)", ()
         UserPreferencesService,
         { provide: UserRepository, useValue: userRepositoryMock },
         { provide: VehicleRepository, useValue: vehicleRepositoryMock },
-        { provide: UserPreferencesRepository, useValue: preferencesRepositoryMock },
+        {
+          provide: UserPreferencesRepository,
+          useValue: preferencesRepositoryMock,
+        },
       ],
     }).compile();
 
@@ -47,24 +48,17 @@ describe("HU21 – Establecer vehículo por defecto (INTEGRATION con mocks)", ()
   test("HU21_E01 – Establece el vehículo por defecto correctamente", async () => {
     userRepositoryMock.findByEmail.mockResolvedValue({
       id: "user-1",
-      correo: "usuario@test.com",
     });
 
     vehicleRepositoryMock.findByIdAndUser.mockResolvedValue({
       id: "vehicle-1",
     });
 
-    preferencesRepositoryMock.findByUserId.mockResolvedValue(
-      new UserPreferences({ userId: "user-1" })
-    );
-
     await service.setDefaultVehicle("usuario@test.com", "vehicle-1");
 
-    expect(preferencesRepositoryMock.save).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userId: "user-1",
-        defaultVehicleId: "vehicle-1",
-      })
+    expect(preferencesRepositoryMock.setDefaultVehicle).toHaveBeenCalledWith(
+      "user-1",
+      "vehicle-1"
     );
   });
 
