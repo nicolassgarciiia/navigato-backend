@@ -104,13 +104,30 @@ export class VehicleService {
   async delete(vehicleId: string): Promise<void> {
   await this.vehicleRepository.delete(vehicleId);
 }
-  async toggleVehicleFavorite(
+async toggleVehicleFavorite(
   userEmail: string,
   vehicleId: string
 ): Promise<void> {
+  const user = await this.getAuthenticatedUser(userEmail);
 
-  throw new Error("Method not implemented.");
+  const vehicle = await this.vehicleRepository.findByIdAndUser(
+    vehicleId,
+    user.id
+  );
+
+  if (!vehicle) {
+    throw new VehicleNotFoundError();
+  }
+
+  vehicle.favorito = !vehicle.favorito;
+
+  try {
+    await this.vehicleRepository.update(vehicle);
+  } catch {
+    throw new DatabaseConnectionError();
+  }
 }
+
 
 
   // ======================================================

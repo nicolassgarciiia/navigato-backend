@@ -126,4 +126,22 @@ export class SupabasePOIRepository implements POIRepository {
     }
   }
 
+  async update(poi: POI): Promise<void> {
+    const { error } = await this.supabase
+      .from("pois")
+      .update({
+        nombre: poi.nombre,
+        latitud: poi.latitud,
+        longitud: poi.longitud,
+        toponimo: poi.toponimo,
+        favorito: poi.favorito, // Campo clave para HU20
+      })
+      .eq("id", poi.id);
+
+    if (error) {
+      console.error("Supabase update POI error:", error);
+      throw error;
+    }
+  }
+
 }

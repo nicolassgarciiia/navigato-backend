@@ -120,12 +120,27 @@ export class POIService {
   async delete(poiId: string): Promise<void> {
   await this.poiRepository.delete(poiId);
   }
-  async togglePoiFavorite(
-  userEmail: string,
-  poiId: string
-): Promise<void> {
-  throw new Error("Method not implemented.");
+  async togglePoiFavorite(userEmail: string, poiId: string): Promise<void> {
+  const user = await this.getAuthenticatedUser(userEmail);
+
+  const poi = await this.poiRepository.findByIdAndUser(
+    poiId,
+    user.id
+  );
+
+  if (!poi) {
+    throw new PlaceOfInterestNotFoundError();
+  }
+
+  poi.favorito = !poi.favorito;
+
+  try {
+    await this.poiRepository.update(poi);
+  } catch {
+    throw new DatabaseConnectionError();
+  }
 }
+
 
 
 

@@ -9,5 +9,5 @@ export abstract class POIRepository {
   abstract findByUser(userId: string): Promise<POI[]>;
   abstract findByIdAndUser(poiId: string, userId: string): Promise<POI | null>;
   abstract delete(poiId: string): Promise<void>;
-
+  abstract update(poi: POI): Promise<void>;
 }
