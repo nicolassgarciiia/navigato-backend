@@ -24,4 +24,17 @@ export class UserPreferencesController {
       vehicleId
     );
   }
+    // ==================================================
+  // HU22 – Establecer tipo de ruta por defecto
+  // ==================================================
+  @Put("default-route-type")
+  async setDefaultRouteType(
+    @Body("email") email: string,
+    @Body("routeType") routeType: string
+  ): Promise<void> {
+    await this.userPreferencesService.setDefaultRouteType(
+      email,
+      routeType
+    );
+  }
 }

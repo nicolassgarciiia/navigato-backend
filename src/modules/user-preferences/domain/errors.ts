@@ -22,3 +22,9 @@ export class DatabaseConnectionError extends Error {
     this.name = "DatabaseConnectionError";
   }
 }
+export class InvalidRouteTypeError extends Error {
+  constructor() {
+    super("InvalidRouteTypeError");
+  }
+}
+

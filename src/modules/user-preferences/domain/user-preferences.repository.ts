@@ -5,4 +5,9 @@ export abstract class UserPreferencesRepository {
     userId: string,
     vehicleId: string
   ): Promise<void>;
+
+  abstract setDefaultRouteType(
+  userId: string,
+  routeType: string
+): Promise<void>;
 }

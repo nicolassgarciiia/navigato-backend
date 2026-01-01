@@ -49,5 +49,21 @@ export class SupabaseUserPreferencesRepository
     throw error;
   }
 }
+async setDefaultRouteType(
+  userId: string,
+  routeType: string
+): Promise<void> {
+  const { error } = await this.supabase
+    .from("user_preferences")
+    .upsert({
+      user_id: userId,
+      default_route_type: routeType,
+    });
+
+  if (error) {
+    throw error;
+  }
+}
+
 
 }

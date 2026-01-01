@@ -8,7 +8,10 @@ import {
   AuthenticationRequiredError,
   ElementNotFoundError,
   DatabaseConnectionError,
+  InvalidRouteTypeError,
 } from "../domain/errors";
+
+const VALID_ROUTE_TYPES = ["rapida", "corta", "economica"];
 
 @Injectable()
 export class UserPreferencesService {
@@ -25,13 +28,11 @@ export class UserPreferencesService {
     userEmail: string,
     vehicleId: string
   ): Promise<void> {
-    // 1️⃣ Usuario autenticado
     const user = await this.userRepository.findByEmail(userEmail);
     if (!user) {
       throw new AuthenticationRequiredError();
     }
 
-    // 2️⃣ El vehículo debe existir y pertenecer al usuario
     let vehicle;
     try {
       vehicle = await this.vehicleRepository.findByIdAndUser(
@@ -46,11 +47,36 @@ export class UserPreferencesService {
       throw new ElementNotFoundError();
     }
 
-    // 3️⃣ Guardar preferencia
     try {
       await this.preferencesRepository.setDefaultVehicle(
         user.id,
         vehicle.id
+      );
+    } catch {
+      throw new DatabaseConnectionError();
+    }
+  }
+
+  // ======================================================
+  // HU22 – Establecer tipo de ruta por defecto
+  // ======================================================
+  async setDefaultRouteType(
+    userEmail: string,
+    routeType: string
+  ): Promise<void> {
+    const user = await this.userRepository.findByEmail(userEmail);
+    if (!user) {
+      throw new AuthenticationRequiredError();
+    }
+
+    if (!VALID_ROUTE_TYPES.includes(routeType)) {
+      throw new InvalidRouteTypeError();
+    }
+
+    try {
+      await this.preferencesRepository.setDefaultRouteType(
+        user.id,
+        routeType
       );
     } catch {
       throw new DatabaseConnectionError();
@@ -67,11 +93,10 @@ export class UserPreferencesService {
     }
 
     try {
-      const prefs =
+      return (
         (await this.preferencesRepository.findByUserId(user.id)) ??
-        new UserPreferences({ userId: user.id });
-
-      return prefs;
+        new UserPreferences({ userId: user.id })
+      );
     } catch {
       throw new DatabaseConnectionError();
     }
