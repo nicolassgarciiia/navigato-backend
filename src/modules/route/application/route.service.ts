@@ -226,6 +226,13 @@ export class RouteService {
 
     await this.routeRepository.delete(user.id, name);
   }
+  async toggleRouteFavorite(
+  userEmail: string,
+  routeId: string
+      ): Promise<void> {
+  throw new Error("Method not implemented.");
+    }
+
 
   /**
    * Alias auxiliar para tests / compatibilidad histórica

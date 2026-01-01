@@ -120,6 +120,13 @@ export class POIService {
   async delete(poiId: string): Promise<void> {
   await this.poiRepository.delete(poiId);
   }
+  async togglePoiFavorite(
+  userEmail: string,
+  poiId: string
+): Promise<void> {
+  throw new Error("Method not implemented.");
+}
+
 
 
   // ======================================================
