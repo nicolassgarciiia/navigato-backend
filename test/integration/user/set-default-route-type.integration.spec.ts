@@ -15,7 +15,6 @@ describe("HU22 – Establecer tipo de ruta por defecto (INTEGRATION)", () => {
     setDefaultRouteType: jest.fn(),
   };
 
-  // 👇 MOCK NECESARIO AUNQUE NO SE USE EN HU22
   const vehicleRepositoryMock = {
     findByIdAndUser: jest.fn(),
   };
