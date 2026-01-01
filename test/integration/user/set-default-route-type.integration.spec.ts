@@ -2,6 +2,7 @@ import { Test } from "@nestjs/testing";
 import { UserPreferencesService } from "../../../src/modules/user-preferences/application/user-preferences.service";
 import { UserPreferencesRepository } from "../../../src/modules/user-preferences/domain/user-preferences.repository";
 import { UserRepository } from "../../../src/modules/user/domain/user.repository";
+import { VehicleRepository } from "../../../src/modules/vehicle/domain/vehicle.repository";
 
 describe("HU22 – Establecer tipo de ruta por defecto (INTEGRATION)", () => {
   let service: UserPreferencesService;
@@ -14,6 +15,11 @@ describe("HU22 – Establecer tipo de ruta por defecto (INTEGRATION)", () => {
     setDefaultRouteType: jest.fn(),
   };
 
+  // 👇 MOCK NECESARIO AUNQUE NO SE USE EN HU22
+  const vehicleRepositoryMock = {
+    findByIdAndUser: jest.fn(),
+  };
+
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -22,6 +28,10 @@ describe("HU22 – Establecer tipo de ruta por defecto (INTEGRATION)", () => {
         {
           provide: UserPreferencesRepository,
           useValue: preferencesRepositoryMock,
+        },
+        {
+          provide: VehicleRepository,
+          useValue: vehicleRepositoryMock,
         },
       ],
     }).compile();
