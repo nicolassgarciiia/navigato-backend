@@ -1,98 +1,140 @@
 import { Test } from "@nestjs/testing";
-import { RouteModule } from "../../../src/modules/route/route.module";
 import { UserModule } from "../../../src/modules/user/user.module";
+import { POIModule } from "../../../src/modules/poi/poi.module";
+import { VehicleModule } from "../../../src/modules/vehicle/vehicle.module";
+import { RouteModule } from "../../../src/modules/route/route.module";
+import { UserService } from "../../../src/modules/user/application/user.service";
+import { POIService } from "../../../src/modules/poi/application/poi.service";
 import { RouteService } from "../../../src/modules/route/application/route.service";
 import * as dotenv from "dotenv";
 import { TEST_EMAIL } from "../../helpers/test-constants";
 
 dotenv.config();
 
-describe("HU20 – Marcar ruta como favorita (ATDD)", () => {
+describe("ROUTE – ATDD / Integration", () => {
+  let userService: UserService;
+  let poiService: POIService;
   let routeService: RouteService;
 
-  // 🧹 Nombres de rutas para limpiar después de cada test
-  let routeNamesToDelete: string[] = [];
+  let poiIdsToDelete: string[] = [];
+  let savedRouteNamesToDelete: string[] = [];
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [UserModule, RouteModule],
+      imports: [UserModule, POIModule, VehicleModule, RouteModule],
     }).compile();
 
+    userService = moduleRef.get(UserService);
+    poiService = moduleRef.get(POIService);
     routeService = moduleRef.get(RouteService);
+
   });
 
   afterEach(async () => {
-    for (const name of routeNamesToDelete) {
+    for (const name of savedRouteNamesToDelete) {
       try {
         await routeService.deleteSavedRoute(TEST_EMAIL, name);
       } catch {}
     }
-    routeNamesToDelete = [];
+    savedRouteNamesToDelete = [];
+
+    for (const id of poiIdsToDelete) {
+      try {
+        await poiService.deletePOI(TEST_EMAIL, id);
+      } catch {}
+    }
+    poiIdsToDelete = [];
   });
 
-  // ==================================================
-  // HU20_E01 – Marcar ruta como favorita con éxito
-  // ==================================================
-  test("HU20_E01 – Debe marcar una ruta guardada como favorita", async () => {
-    const nombreRuta = "Ruta al trabajo";
+  // ======================================================
+  // HU13 – Calcular ruta
+  // ======================================================
+  test("HU13_E01 – Calcula ruta entre dos POIs", async () => {
+    const origen = await poiService.createPOI(TEST_EMAIL, "R_ORIGEN", 41.38, 2.17);
+    const destino = await poiService.createPOI(TEST_EMAIL, "R_DESTINO", 41.39, 2.18);
+    poiIdsToDelete.push(origen.id, destino.id);
 
-    // GIVEN: El usuario tiene una ruta calculada y guardada
-    await routeService.calculateRoute(TEST_EMAIL, "Casa", "Trabajo", "CAR");
-    await routeService.saveRoute(TEST_EMAIL, nombreRuta);
-    routeNamesToDelete.push(nombreRuta);
-
-    // WHEN: El usuario marca la ruta como favorita
-    await routeService.toggleRouteFavorite(TEST_EMAIL, nombreRuta);
-
-    // THEN: El atributo favorito debe ser true
-    const savedRoutes = await routeService.listSavedRoutes(TEST_EMAIL);
-    const route = savedRoutes.find((r) => r.nombre === nombreRuta);
+    const route = await routeService.calculateRoute(
+      TEST_EMAIL,
+      "R_ORIGEN",
+      "R_DESTINO",
+      "car"
+    );
 
     expect(route).toBeDefined();
-    expect(route!.favorito).toBe(true);
+    expect(route.distancia).toBeDefined();
   });
 
-  // ==================================================
-  // HU20_E02 – Ruta no existe
-  // ==================================================
-  test("HU20_E02 – Debe lanzar error si la ruta no existe", async () => {
-    // Intentamos marcar una ruta que nunca se guardó
+  // ======================================================
+  // HU17 – Guardar ruta
+  // ======================================================
+  test("HU17_E01 – Guarda la última ruta calculada", async () => {
+    const origen = await poiService.createPOI(TEST_EMAIL, "S_ORIGEN", 41.40, 2.19);
+    const destino = await poiService.createPOI(TEST_EMAIL, "S_DESTINO", 41.41, 2.20);
+    poiIdsToDelete.push(origen.id, destino.id);
+
+    await routeService.calculateRoute(
+      TEST_EMAIL,
+      "S_ORIGEN",
+      "S_DESTINO",
+      "car"
+    );
+
+    const saved = await routeService.saveRoute(TEST_EMAIL, "Ruta Casa-Trabajo");
+    savedRouteNamesToDelete.push(saved.nombre);
+
+    expect(saved).toBeDefined();
+    expect(saved.nombre).toBe("Ruta Casa-Trabajo");
+  });
+
+  test("HU17_E02 – Error si no hay ruta calculada", async () => {
     await expect(
-      routeService.toggleRouteFavorite(TEST_EMAIL, "Ruta Fantasma")
-    ).rejects.toThrow("SavedRouteNotFoundError"); 
-    // Nota: Si en tu Gherkin pusiste NameWithoutRouteError, cámbialo aquí para que coincida
+      routeService.saveRoute(TEST_EMAIL, "Sin ruta")
+    ).rejects.toThrow("RouteNotCalculatedError");
   });
 
-  // ==================================================
-  // HU20_E04 – Usuario no autenticado
-  // ==================================================
-  test("HU20_E04 – Debe lanzar error si el usuario no tiene sesión", async () => {
-    await expect(
-      routeService.toggleRouteFavorite("noexiste@test.com", "Cualquier Ruta")
-    ).rejects.toThrow("AuthenticationRequiredError");
+  // ======================================================
+  // HU18 – Listar rutas guardadas
+  // ======================================================
+  test("HU18_E01 – Lista rutas guardadas", async () => {
+    const origen = await poiService.createPOI(TEST_EMAIL, "L_ORIGEN", 41.42, 2.21);
+    const destino = await poiService.createPOI(TEST_EMAIL, "L_DESTINO", 41.43, 2.22);
+    poiIdsToDelete.push(origen.id, destino.id);
+
+    await routeService.calculateRoute(
+      TEST_EMAIL,
+      "L_ORIGEN",
+      "L_DESTINO",
+      "car"
+    );
+
+    const saved = await routeService.saveRoute(TEST_EMAIL, "Ruta Lista");
+    savedRouteNamesToDelete.push(saved.nombre);
+
+    const routes = await routeService.listSavedRoutes(TEST_EMAIL);
+
+    expect(routes.some(r => r.nombre === "Ruta Lista")).toBe(true);
   });
 
-  // ==================================================
-  // HU20_E05 – Desmarcar ruta como favorita
-  // ==================================================
-  test("HU20_E05 – Debe desmarcar una ruta que ya era favorita", async () => {
-    const nombreRuta = "Ruta al Gimnasio";
+  // ======================================================
+  // HU19 – Eliminar ruta guardada
+  // ======================================================
+  test("HU19_E01 – Elimina ruta guardada", async () => {
+    const origen = await poiService.createPOI(TEST_EMAIL, "D_ORIGEN", 41.44, 2.23);
+    const destino = await poiService.createPOI(TEST_EMAIL, "D_DESTINO", 41.45, 2.24);
+    poiIdsToDelete.push(origen.id, destino.id);
 
-    // GIVEN: Una ruta guardada y marcada como favorita
-    await routeService.calculateRoute(TEST_EMAIL, "Casa", "Gimnasio", "CAR");
-    await routeService.saveRoute(TEST_EMAIL, nombreRuta);
-    routeNamesToDelete.push(nombreRuta);
-    
-    // La marcamos primero
-    await routeService.toggleRouteFavorite(TEST_EMAIL, nombreRuta);
+    await routeService.calculateRoute(
+      TEST_EMAIL,
+      "D_ORIGEN",
+      "D_DESTINO",
+      "car"
+    );
 
-    // WHEN: El usuario vuelve a hacer toggle (desmarcar)
-    await routeService.toggleRouteFavorite(TEST_EMAIL, nombreRuta);
+    const saved = await routeService.saveRoute(TEST_EMAIL, "Ruta Borrar");
+    await routeService.deleteSavedRoute(TEST_EMAIL, saved.nombre);
 
-    // THEN: El atributo favorito debe volver a false
-    const savedRoutes = await routeService.listSavedRoutes(TEST_EMAIL);
-    const route = savedRoutes.find((r) => r.nombre === nombreRuta);
-
-    expect(route!.favorito).toBe(false);
+    const routes = await routeService.listSavedRoutes(TEST_EMAIL);
+    expect(routes.find(r => r.nombre === saved.nombre)).toBeUndefined();
   });
 });

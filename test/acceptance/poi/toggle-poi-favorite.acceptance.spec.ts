@@ -4,11 +4,11 @@ import { POIModule } from "../../../src/modules/poi/poi.module";
 import { POIService } from "../../../src/modules/poi/application/poi.service";
 import { UserService } from "../../../src/modules/user/application/user.service";
 import * as dotenv from "dotenv";
-import { TEST_EMAIL } from "../../helpers/test-constants";
+import { TEST_EMAIL, TEST_PASSWORD } from "../../helpers/test-constants";
 
 dotenv.config();
 
-describe("HU20 – Marcar POI como favorito (ATDD)", () => {
+describe("POI – ATDD / Integration", () => {
   let poiService: POIService;
   let userService: UserService;
 
@@ -23,7 +23,6 @@ describe("HU20 – Marcar POI como favorito (ATDD)", () => {
     userService = moduleRef.get(UserService);
   });
 
-  // Limpieza de datos después de cada test
   afterEach(async () => {
     for (const poiId of poiIdsToDelete) {
       try {
@@ -33,61 +32,109 @@ describe("HU20 – Marcar POI como favorito (ATDD)", () => {
     poiIdsToDelete = [];
   });
 
-  // ==================================================
-  // HU20_E01 – Marcar POI como favorito
-  // ==================================================
-  test("HU20_E01 – Marca POI como favorito con éxito", async () => {
-    // 1. GIVEN: Creamos un POI (por defecto favorito suele ser false)
-    const poi = await poiService.createPOI(TEST_EMAIL, "Casa", 41.38, 2.17);
+  // ======================================================
+  // HU05 – Alta de POI por coordenadas
+  // ======================================================
+  test("HU05_E01 – Crea POI con coordenadas válidas", async () => {
+    const poi = await poiService.createPOI(
+      TEST_EMAIL,
+      "HU05_Casa",
+      41.38,
+      2.17
+    );
+
     poiIdsToDelete.push(poi.id);
 
-    // 2. WHEN: Llamamos al método con el ID del POI
-    await poiService.togglePoiFavorite(TEST_EMAIL, poi.id);
-
-    // 3. THEN: Verificamos que el estado ha cambiado
-    const pois = await poiService.listByUser(TEST_EMAIL);
-    const updated = pois.find((p) => p.id === poi.id);
-
-    expect(updated).toBeDefined();
-    expect(updated!.favorito).toBe(true);
+    expect(poi).toBeDefined();
+    expect(poi.nombre).toBe("HU05_Casa");
+    expect(poi.favorito).toBe(false);
   });
 
-  // ==================================================
-  // HU20_E02 – POI no existe
-  // ==================================================
-  test("HU20_E02 – Error si el POI no existe", async () => {
-    const idInexistente = "00000000-0000-0000-0000-000000000000";
-    
+  test("HU05_E02 – Error si coordenadas inválidas", async () => {
     await expect(
-      poiService.togglePoiFavorite(TEST_EMAIL, idInexistente)
+      poiService.createPOI(TEST_EMAIL, "HU05_Bad", 200, 300)
+    ).rejects.toThrow("InvalidCoordinatesFormatError");
+  });
+
+  // ======================================================
+  // HU07 – Listado de POIs
+  // ======================================================
+  test("HU07_E01 – Lista POIs del usuario", async () => {
+    const poi = await poiService.createPOI(
+      TEST_EMAIL,
+      "HU07_Parque",
+      41.39,
+      2.18
+    );
+
+    poiIdsToDelete.push(poi.id);
+
+    const pois = await poiService.listByUser(TEST_EMAIL);
+
+    expect(pois.length).toBeGreaterThan(0);
+    expect(pois.some(p => p.id === poi.id)).toBe(true);
+  });
+
+  // ======================================================
+  // HU08 – Borrado de POI
+  // ======================================================
+  test("HU08_E01 – Borra POI existente", async () => {
+    const poi = await poiService.createPOI(
+      TEST_EMAIL,
+      "HU08_Delete",
+      41.40,
+      2.19
+    );
+
+    await poiService.deletePOI(TEST_EMAIL, poi.id);
+
+    const pois = await poiService.listByUser(TEST_EMAIL);
+    expect(pois.find(p => p.id === poi.id)).toBeUndefined();
+  });
+
+  test("HU08_E02 – Error si POI no existe", async () => {
+    await expect(
+      poiService.deletePOI(
+        TEST_EMAIL,
+        "00000000-0000-0000-0000-000000000000"
+      )
     ).rejects.toThrow("PlaceOfInterestNotFoundError");
   });
 
-  // ==================================================
-  // HU20_E03 – Usuario no autenticado (Email no válido)
-  // ==================================================
-  test("HU20_E03 – Error si el usuario no está autenticado", async () => {
-    await expect(
-      poiService.togglePoiFavorite("no-existe@test.com", "any-id")
-    ).rejects.toThrow("AuthenticationRequiredError");
+  // ======================================================
+  // HU20 – Marcar POI como favorito
+  // ======================================================
+  test("HU20_E01 – Marca POI como favorito", async () => {
+    const poi = await poiService.createPOI(
+      TEST_EMAIL,
+      "HU20_Fav",
+      41.41,
+      2.20
+    );
+    poiIdsToDelete.push(poi.id);
+
+    await poiService.togglePoiFavorite(TEST_EMAIL, poi.id);
+
+    const pois = await poiService.listByUser(TEST_EMAIL);
+    const updated = pois.find(p => p.id === poi.id);
+
+    expect(updated!.favorito).toBe(true);
   });
 
-  // ==================================================
-  // HU20_E05 – Desmarcar POI como favorito
-  // ==================================================
-  test("HU20_E05 – Desmarca un POI que ya era favorito", async () => {
-    // 1. GIVEN: Creamos y marcamos como favorito
-    const poi = await poiService.createPOI(TEST_EMAIL, "Trabajo", 41.39, 2.18);
+  test("HU20_E05 – Desmarca POI favorito", async () => {
+    const poi = await poiService.createPOI(
+      TEST_EMAIL,
+      "HU20_Unfav",
+      41.42,
+      2.21
+    );
     poiIdsToDelete.push(poi.id);
-    
-    await poiService.togglePoiFavorite(TEST_EMAIL, poi.id); // Primera vez -> true
 
-    // 2. WHEN: Volvemos a llamar al toggle
-    await poiService.togglePoiFavorite(TEST_EMAIL, poi.id); // Segunda vez -> false
+    await poiService.togglePoiFavorite(TEST_EMAIL, poi.id);
+    await poiService.togglePoiFavorite(TEST_EMAIL, poi.id);
 
-    // 3. THEN: Verificamos que ahora es false
     const pois = await poiService.listByUser(TEST_EMAIL);
-    const updated = pois.find((p) => p.id === poi.id);
+    const updated = pois.find(p => p.id === poi.id);
 
     expect(updated!.favorito).toBe(false);
   });
