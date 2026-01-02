@@ -19,4 +19,9 @@ export abstract class RouteRepository {
     userId: string,
     name: string
   ): Promise<void>;
+  
+  abstract update(
+    userId: string, 
+    route: SavedRoute
+  ): Promise<void>;
 }

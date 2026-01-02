@@ -226,6 +226,18 @@ export class RouteService {
 
     await this.routeRepository.delete(user.id, name);
   }
+  async toggleRouteFavorite(email: string, name: string): Promise<void> {
+  const user = await this.userRepository.findByEmail(email);
+  if (!user) throw new AuthenticationRequiredError();
+
+  const route = await this.routeRepository.findByName(user.id, name);
+  if (!route) throw new SavedRouteNotFoundError();
+
+  route.favorito = !route.favorito;
+  await this.routeRepository.update(user.id, route);
+}
+
+
 
   /**
    * Alias auxiliar para tests / compatibilidad histórica

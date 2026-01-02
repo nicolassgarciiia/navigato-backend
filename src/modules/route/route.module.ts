@@ -5,7 +5,6 @@ import { POIModule } from "../poi/poi.module";
 import { VehicleModule } from "../vehicle/vehicle.module";
 import { DummyRoutingAdapter } from "./infrastructure/adapters/dummy-routing.adapter";
 import { RouteRepository } from "./domain/route.repository";
-import { InMemoryRouteRepository } from "./domain/in-memory-route.repository";
 import { SupabaseRouteRepository } from "./infrastructure/supabase-route.repository";
 
 @Module({
@@ -25,6 +24,8 @@ import { SupabaseRouteRepository } from "./infrastructure/supabase-route.reposit
       useClass: DummyRoutingAdapter,
     },
   ],
-  exports: [RouteService],
+  exports: [RouteService,
+  RouteRepository
+  ],
 })
 export class RouteModule {}

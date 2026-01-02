@@ -89,4 +89,19 @@ export class SupabaseRouteRepository implements RouteRepository {
       throw new Error("DatabaseConnectionError");
     }
   }
+  async update(userId: string, route: SavedRoute): Promise<void> {
+    const { error } = await this.supabase
+      .from("saved_routes")
+      .update({
+        favorite: route.favorito,
+        // Si necesitas actualizar el campo route en el futuro, se añadiría aquí
+      })
+      .eq("user_id", userId)
+      .eq("name", route.nombre);
+
+    if (error) {
+      console.error("Supabase update route error:", error);
+      throw new Error("DatabaseConnectionError");
+    }
+  }
 }
