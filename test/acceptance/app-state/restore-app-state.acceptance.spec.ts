@@ -7,6 +7,7 @@ import { UserPreferencesModule } from "../../../src/modules/user-preferences/use
 import { AppStateService } from "../../../src/modules/app-state/application/app-state.service";
 import { UserService } from "../../../src/modules/user/application/user.service";
 import { TEST_EMAIL, TEST_PASSWORD } from "../../helpers/test-constants";
+import { AppStateModule } from "../../../src/modules/app-state/app-state.module";
 import * as dotenv from "dotenv";
 
 dotenv.config();
@@ -23,6 +24,7 @@ describe("HU23 – Restaurar estado de la aplicación (ACCEPTANCE)", () => {
         POIModule,
         RouteModule,
         UserPreferencesModule,
+        AppStateModule,
       ],
       providers: [AppStateService],
     }).compile();
