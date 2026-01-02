@@ -59,7 +59,7 @@ describe("HU23 – Restaurar estado de la aplicación (INTEGRATION)", () => {
   test("HU23_E01 – Restaura correctamente el estado del usuario", async () => {
     userRepositoryMock.findByEmail.mockResolvedValue({
       id: "user-1",
-      email: "usuario@test.com",
+      correo: "usuario@test.com",
       nombre: "Usuario",
       apellidos: "García Edo",
     });
