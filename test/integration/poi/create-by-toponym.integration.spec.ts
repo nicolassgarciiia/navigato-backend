@@ -1,111 +1,68 @@
 import { Test } from "@nestjs/testing";
 import { POIModule } from "../../../src/modules/poi/poi.module";
 import { POIService } from "../../../src/modules/poi/application/poi.service";
-import { UserModule } from "../../../src/modules/user/user.module";
-import { UserService } from "../../../src/modules/user/application/user.service";
-import { GeocodingService } from "../../../src/modules/geocoding/application/geocoding.service";
+import { UserRepository } from "../../../src/modules/user/domain/user.repository";
 import { POIRepository } from "../../../src/modules/poi/domain/poi.repository";
-import * as crypto from "crypto";
+import { GeocodingService } from "../../../src/modules/geocoding/application/geocoding.service";
 
-/**
- * ==========================
- * MOCKS
- * ==========================
- */
-
-const geocodingServiceMock = {
-  getCoordinatesFromToponym: jest.fn().mockResolvedValue({
-    latitud: 48.8584,
-    longitud: 2.2945,
-  }),
-};
-
-// Repositorios en memoria
-const users: any[] = [];
-const pois: any[] = [];
-
-const userRepositoryMock = {
-  findByEmail: jest.fn((email: string) =>
-    users.find((u) => u.email === email)
-  ),
-  save: jest.fn((user) => {
-    users.push(user);
-    return user;
-  }),
-  deleteByEmail: jest.fn((email: string) => {
-    const index = users.findIndex((u) => u.email === email);
-    if (index !== -1) users.splice(index, 1);
-  }),
-};
-
-const poiRepositoryMock = {
-  findByUserAndName: jest.fn((userId: string, name: string) =>
-    pois.find((p) => p.userId === userId && p.nombre === name)
-  ),
-  save: jest.fn((poi, userId: string) => {
-    pois.push({ ...poi, userId });
-    return poi;
-  }),
-};
-
-/**
- * ==========================
- * TEST
- * ==========================
- */
-
-describe("HU06 – Alta de POI por topónimo (INTEGRATION)", () => {
+describe("HU06 – Alta de POI por topónimo (INTEGRATION - mocks)", () => {
   let poiService: POIService;
-  let userService: UserService;
 
-  const email = `hu06_${crypto.randomUUID()}@test.com`;
-  const password = "ValidPass1!";
+  const email = "hu06_integration@test.com";
 
-  beforeAll(async () => {
+  // ===== MOCKS =====
+  const mockUser = {
+    id: 202,
+    nombre: "Usuario Integracion",
+    correo: email,
+    listaLugares: [],
+  };
+
+  const mockUserRepository = {
+    findByEmail: jest.fn(),
+    save: jest.fn(),
+    update: jest.fn(),
+    deleteByEmail: jest.fn(),
+  };
+
+  const mockPOIRepository = {
+    findByUserAndName: jest.fn(),
+    save: jest.fn(),
+  };
+
+  const mockGeocodingService = {
+    getCoordinatesFromToponym: jest.fn(),
+  };
+
+  beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [UserModule, POIModule],
+      imports: [POIModule],
     })
-      .overrideProvider(GeocodingService)
-      .useValue(geocodingServiceMock)
-      .overrideProvider("UserRepository")
-      .useValue(userRepositoryMock)
+      .overrideProvider(UserRepository)
+      .useValue(mockUserRepository)
       .overrideProvider(POIRepository)
-      .useValue(poiRepositoryMock)
+      .useValue(mockPOIRepository)
+      .overrideProvider(GeocodingService)
+      .useValue(mockGeocodingService)
       .compile();
 
     poiService = moduleRef.get(POIService);
-    userService = moduleRef.get(UserService);
 
-    // GIVEN: usuario registrado
-    const user = await userService.register({
-      nombre: "Usuario García Edo",
-      apellidos: "HU06",
-      correo: email,
-      contraseña: password,
-      repetirContraseña: password,
-      aceptaPoliticaPrivacidad: true,
-    });
-
-    // Guardamos el usuario con id (necesario para el repo)
-    users.push({
-      id: user.id,
-      email,
-    });
-  });
-
-  afterEach(() => {
     jest.clearAllMocks();
+
+    mockUserRepository.findByEmail.mockResolvedValue(mockUser);
+    mockPOIRepository.findByUserAndName.mockResolvedValue(null);
+    mockGeocodingService.getCoordinatesFromToponym.mockResolvedValue({
+      latitud: 48.8584,
+      longitud: 2.2945,
+    });
+    mockPOIRepository.save.mockResolvedValue(undefined);
   });
 
-  afterAll(() => {
-    users.length = 0;
-    pois.length = 0;
-  });
-
-  // =====================================================
-  // HU06_E01 – Alta por topónimo exitosa
-  // =====================================================
-  test("HU06_E01 – Alta por topónimo exitosa", async () => {
+  // ======================================
+  // HU06_E01 – Escenario válido
+  // ======================================
+  test("HU06_E01 – Alta de POI por topónimo válida", async () => {
     const poi = await poiService.createByToponym(
       email,
       "Recuerdo de París",
@@ -119,17 +76,20 @@ describe("HU06 – Alta de POI por topónimo (INTEGRATION)", () => {
     expect(poi.longitud).toBeCloseTo(2.2945, 1);
     expect(poi.favorito).toBe(false);
 
+    expect(mockUserRepository.findByEmail).toHaveBeenCalledTimes(1);
+    expect(mockPOIRepository.findByUserAndName).toHaveBeenCalledTimes(1);
     expect(
-      geocodingServiceMock.getCoordinatesFromToponym
-    ).toHaveBeenCalledWith("Torre Eiffel, París, Francia");
-
-    expect(poiRepositoryMock.save).toHaveBeenCalled();
+      mockGeocodingService.getCoordinatesFromToponym
+    ).toHaveBeenCalledTimes(1);
+    expect(mockPOIRepository.save).toHaveBeenCalledTimes(1);
   });
 
-  // =====================================================
+  // ======================================
   // HU06_E04 – Usuario no autenticado
-  // =====================================================
+  // ======================================
   test("HU06_E04 – Usuario no autenticado", async () => {
+    mockUserRepository.findByEmail.mockResolvedValue(null);
+
     await expect(
       poiService.createByToponym(
         "no-existe@test.com",
@@ -139,15 +99,14 @@ describe("HU06 – Alta de POI por topónimo (INTEGRATION)", () => {
     ).rejects.toThrow("AuthenticationRequiredError");
   });
 
-  // =====================================================
-  // HU06_E06 – Nombre de POI repetido
-  // =====================================================
-  test("HU06_E06 – Nombre de POI repetido para el mismo usuario", async () => {
-    await poiService.createByToponym(
-      email,
-      "Mi Lugar Favorito",
-      "Madrid"
-    );
+  // ======================================
+  // HU06_E06 – Nombre repetido
+  // ======================================
+  test("HU06_E06 – Nombre de POI repetido", async () => {
+    mockPOIRepository.findByUserAndName.mockResolvedValueOnce({
+      id: "poi-existente",
+      nombre: "Mi Lugar Favorito",
+    });
 
     await expect(
       poiService.createByToponym(

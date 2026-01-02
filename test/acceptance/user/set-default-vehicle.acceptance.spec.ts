@@ -10,6 +10,9 @@ describe("HU21 – Establecer vehículo/modo de transporte por defecto (ATDD)", 
   let preferencesService: UserPreferencesService;
   let vehicleService: VehicleService;
 
+  // 🧹 Vehículos creados en cada test
+  let vehicleIdsToDelete: string[] = [];
+
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [
@@ -24,6 +27,20 @@ describe("HU21 – Establecer vehículo/modo de transporte por defecto (ATDD)", 
   });
 
   // ==================================================
+  // Limpieza SOLO de los vehículos creados en el test
+  // ==================================================
+  afterEach(async () => {
+    for (const vehicleId of vehicleIdsToDelete) {
+      try {
+        await vehicleService.delete(vehicleId);
+      } catch {
+        // ignorar errores de limpieza
+      }
+    }
+    vehicleIdsToDelete = [];
+  });
+
+  // ==================================================
   // HU21_E01 – Escenario VÁLIDO
   // ==================================================
   test("HU21_E01 – Se establece el vehículo por defecto correctamente", async () => {
@@ -34,6 +51,8 @@ describe("HU21 – Establecer vehículo/modo de transporte por defecto (ATDD)", 
       "COMBUSTION",
       6.5
     );
+
+    vehicleIdsToDelete.push(vehicle.id);
 
     await preferencesService.setDefaultVehicle(
       TEST_EMAIL,
@@ -56,7 +75,6 @@ describe("HU21 – Establecer vehículo/modo de transporte por defecto (ATDD)", 
       )
     ).rejects.toThrow("ElementNotFoundError");
   });
-
 
   // ==================================================
   // HU21_E04 – Usuario NO autenticado
