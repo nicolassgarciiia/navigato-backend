@@ -24,6 +24,8 @@ import { SupabaseRouteRepository } from "./infrastructure/supabase-route.reposit
       useClass: DummyRoutingAdapter,
     },
   ],
-  exports: [RouteService],
+  exports: [RouteService,
+  RouteRepository
+  ],
 })
 export class RouteModule {}

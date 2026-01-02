@@ -17,6 +17,6 @@ import { SupabaseUserPreferencesRepository } from "./infrastructure/supabase-use
       useClass: SupabaseUserPreferencesRepository,
     },
   ],
-  exports: [UserPreferencesService],
+  exports: [UserPreferencesService, UserPreferencesRepository],
 })
 export class UserPreferencesModule {}
