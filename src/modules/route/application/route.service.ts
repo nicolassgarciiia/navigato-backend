@@ -52,36 +52,24 @@ export class RouteService {
   // ======================================================
   // HU13 – Calcular ruta
   // ======================================================
-  async calculateRoute(
-    email: string,
-    origenName: string,
-    destinoName: string,
-    metodo: string
-  ): Promise<Route> {
-    const user = await this.userRepository.findByEmail(email);
-    if (!user) throw new AuthenticationRequiredError();
-
-    const pois = await this.poiRepository.findByUser(user.id);
-    const origen = pois.find(p => p.nombre === origenName);
-    const destino = pois.find(p => p.nombre === destinoName);
-
-    if (!origen || !destino) {
-      throw new InvalidPlaceOfInterestError();
-    }
-
-    try {
-      const route = await this.routingAdapter.calculate(
-        origen,
-        destino,
-        metodo
-      );
-
-      this.lastCalculatedRoutes.set(user.id, route);
-      return route;
-    } catch {
-      throw new RoutingServiceUnavailableError();
-    }
+  calculateRoute(
+  correo: string,
+  origen: { lat: number; lng: number },
+  destino: { lat: number; lng: number },
+  metodo: string
+) {
+  if (!correo) {
+    throw new Error("AuthenticationRequiredError");
   }
+
+
+  console.log("ORIGEN:", origen);
+console.log("DESTINO:", destino);
+console.log("METODO:", metodo);
+console.log("ADAPTER:", this.routingAdapter);
+
+  return this.routingAdapter.calculate(origen, destino, metodo);
+}
 
   // ======================================================
   // HU14 – Calcular coste de ruta en vehículo
