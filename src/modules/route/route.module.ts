@@ -6,6 +6,8 @@ import { VehicleModule } from "../vehicle/vehicle.module";
 import { DummyRoutingAdapter } from "./infrastructure/adapters/dummy-routing.adapter";
 import { RouteRepository } from "./domain/route.repository";
 import { SupabaseRouteRepository } from "./infrastructure/supabase-route.repository";
+import { RouteController } from "./route.controller";
+import { OpenRouteRoutingAdapter } from "./infrastructure/adapters/openroute-routing.adapter";
 
 @Module({
   imports: [
@@ -13,6 +15,7 @@ import { SupabaseRouteRepository } from "./infrastructure/supabase-route.reposit
     POIModule,
     VehicleModule     
   ],
+  controllers: [RouteController],
   providers: [
     RouteService,
     {
@@ -21,7 +24,7 @@ import { SupabaseRouteRepository } from "./infrastructure/supabase-route.reposit
     },
     {
       provide: "RoutingAdapter",
-      useClass: DummyRoutingAdapter,
+      useClass: OpenRouteRoutingAdapter,
     },
   ],
   exports: [RouteService,

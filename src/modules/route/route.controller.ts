@@ -6,6 +6,8 @@ import {
   Query,
   Delete,
   UseFilters,
+  Req,
+  UseGuards
 } from "@nestjs/common";
 import { RouteService } from "./application/route.service";
 import { RouteExceptionFilter } from "./route-exception.filter";
@@ -14,9 +16,11 @@ import { CalculateRouteByTypeDto } from "./dto/calculate-route-by-type.dto";
 import { CalculateRouteCostDto } from "./dto/calculate-route-cost.dto";
 import { CalculateRouteCaloriesDto } from "./dto/calculate-route-calories.dto";
 import { SaveRouteDto } from "./dto/save-route.dto";
+import { SupabaseAuthGuard } from "src/auth/supabase-auth.guard";
 
 @Controller("routes")
-@UseFilters(RouteExceptionFilter)
+@UseGuards(SupabaseAuthGuard)
+//@UseFilters(RouteExceptionFilter)
 export class RouteController {
   constructor(private readonly routeService: RouteService) {}
 
@@ -24,14 +28,19 @@ export class RouteController {
   // HU13 – Calcular ruta
   // =====================================================
   @Post("calculate")
-  async calculateRoute(@Body() dto: CalculateRouteDto) {
-    return this.routeService.calculateRoute(
-      dto.correo,
-      dto.origen,
-      dto.destino,
-      dto.metodo
-    );
-  }
+async calculateRoute(
+  @Body() dto: CalculateRouteDto,
+  @Req() req: any
+) {
+  const correo = req.user?.email;
+
+  return this.routeService.calculateRoute(
+    correo,
+    dto.origen,
+    dto.destino,
+    dto.metodo
+  );
+}
 
   // =====================================================
   // HU14 – Calcular coste de ruta en vehículo
