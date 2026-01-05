@@ -11,14 +11,25 @@ export class OpenRouteRoutingAdapter implements RoutingAdapter {
   async calculate(
     origen: { lat: number; lng: number },
     destino: { lat: number; lng: number },
-    metodo: string
+    metodo: string,
+    tipo: "rapida" | "corta" | "economica" = "rapida"
   ): Promise<Route> {
     if (!this.apiKey) {
       throw new Error("RoutingServiceUnavailableError");
     }
 
+    const preferenceMap = {
+      rapida: "fastest",
+      corta: "shortest",
+      economica: "recommended",
+    };
+
+    const preference = preferenceMap[tipo];
+
+
     const profile = this.mapMetodoToProfile(metodo);
-    const url = `${this.baseUrl}/${profile}/geojson`;
+    const url = `${this.baseUrl}/${profile}/geojson?preference=${preference}`;
+
 
     const body = {
       coordinates: [
@@ -63,9 +74,7 @@ export class OpenRouteRoutingAdapter implements RoutingAdapter {
       distancia: Math.round(summary.distance),
       duracion: Math.round(summary.duration),
       metodoMovilidad: metodo,
-      coordenadas: geometry.map(
-        ([lng, lat]: number[]) => [lat, lng]
-      ),
+      coordenadas: geometry
     });
   }
 
