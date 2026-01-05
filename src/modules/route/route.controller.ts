@@ -7,6 +7,8 @@ import {
   Delete,
   UseFilters,
   Req,
+  Param,
+  Patch,
   UseGuards
 } from "@nestjs/common";
 import { RouteService } from "./application/route.service";
@@ -14,9 +16,9 @@ import { RouteExceptionFilter } from "./route-exception.filter";
 import { CalculateRouteDto } from "./dto/calculate-route.dto";
 import { CalculateRouteByTypeDto } from "./dto/calculate-route-by-type.dto";
 import { CalculateRouteCostDto } from "./dto/calculate-route-cost.dto";
-import { CalculateRouteCaloriesDto } from "./dto/calculate-route-calories.dto";
 import { SaveRouteDto } from "./dto/save-route.dto";
 import { SupabaseAuthGuard } from "src/auth/supabase-auth.guard";
+
 
 @Controller("routes")
 @UseGuards(SupabaseAuthGuard)
@@ -46,28 +48,39 @@ async calculateRoute(
   // HU14 – Calcular coste de ruta en vehículo
   // =====================================================
   @Post("cost/vehicle")
-  async calculateRouteCost(@Body() dto: CalculateRouteCostDto) {
+  async calculateRouteCost(
+    @Body() dto: CalculateRouteCostDto,
+    @Req() req: any
+  ) {
+    const email = req.user?.email;
     return this.routeService.calculateRouteCostWithVehicle(
-      dto.correo,
+      email,
       dto.vehiculo
     );
   }
+
 
   // =====================================================
   // HU15 – Calcular coste calórico
   // =====================================================
   @Post("cost/calories")
-  async calculateRouteCalories(@Body() dto: CalculateRouteCaloriesDto) {
-    return this.routeService.calculateRouteCalories(dto.correo);
+  calculateRouteCalories(@Req() req: any) {
+    const email = req.user?.email;
+    return this.routeService.calculateRouteCalories(email);
   }
 
   // =====================================================
   // HU16 – Calcular ruta por tipo
   // =====================================================
   @Post("calculate/by-type")
-  async calculateRouteByType(@Body() dto: CalculateRouteByTypeDto) {
+  async calculateRouteByType(
+    @Body() dto: CalculateRouteByTypeDto,
+    @Req() req: any
+  ) {
+    const email = req.user?.email;
+
     return this.routeService.calculateRouteByType(
-      dto.correo,
+      email,
       dto.origen,
       dto.destino,
       dto.metodo,
@@ -75,31 +88,48 @@ async calculateRoute(
     );
   }
 
+
   // =====================================================
   // HU17 – Guardar ruta
   // =====================================================
   @Post("save")
-  async saveRoute(@Body() dto: SaveRouteDto) {
-    return this.routeService.saveRoute(dto.correo, dto.nombre);
+  async saveRoute(@Body() dto: SaveRouteDto, @Req() req: any) {
+    const correo = req.user?.email;
+    return this.routeService.saveRoute(correo, dto.nombre);
   }
 
   // =====================================================
   // HU18 – Listar rutas guardadas
   // =====================================================
   @Get()
-  async listSavedRoutes(@Query("correo") correo: string) {
-    return this.routeService.listSavedRoutes(correo);
+  async listSavedRoutes(@Req() req: any) {
+    const email = req.user?.email;
+    return this.routeService.listSavedRoutes(email);
   }
+
 
   // =====================================================
   // HU19 – Eliminar ruta guardada
   // =====================================================
-  @Delete()
-  async deleteRoute(
-    @Query("correo") correo: string,
-    @Query("nombre") nombre: string
+  @Delete(":name")
+  async deleteRoute(@Param("name") name: string, @Req() req: any) {
+    const correo = req.user?.email;
+    return this.routeService.deleteSavedRoute(correo, name);
+  }
+
+
+  // =====================================================
+  // HU20 – Marcar ruta Favorita
+  // =====================================================
+  @Post(":name/favorite")
+async toggleFavorite(
+    @Param("name") name: string,
+    @Req() req: any
   ) {
-    await this.routeService.delete(correo, nombre);
+    const correo = req.user?.email;
+    await this.routeService.toggleRouteFavorite(correo, name);
     return { ok: true };
   }
+
 }
+
