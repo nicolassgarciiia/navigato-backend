@@ -12,7 +12,7 @@ import { UserRepository } from "../../../src/modules/user/domain/user.repository
  */
 
 const userRepositoryMock = {
-  findByEmail: jest.fn(),
+  findById: jest.fn(),
 };
 
 const vehicleRepositoryMock = {
@@ -43,9 +43,8 @@ describe("HU10 – Listado de vehículos (INTEGRATION)", () => {
   // HU10_E01 – Usuario con vehículos
   // =====================================================
   test("HU10_E01 – Devuelve la lista de vehículos del usuario", async () => {
-    userRepositoryMock.findByEmail.mockResolvedValue({
+    userRepositoryMock.findById.mockResolvedValue({
       id: "user-1",
-      email: "usuario@test.com",
     });
 
     vehicleRepositoryMock.findByUser.mockResolvedValue([
@@ -53,7 +52,9 @@ describe("HU10 – Listado de vehículos (INTEGRATION)", () => {
       { id: "2", nombre: "Moto" },
     ]);
 
-    const result = await vehicleService.listByUser("usuario@test.com");
+    const authUser = { id: "user-1" };
+
+    const result = await vehicleService.listByUser(authUser);
 
     expect(result).toHaveLength(2);
     expect(vehicleRepositoryMock.findByUser).toHaveBeenCalledWith("user-1");
@@ -63,42 +64,38 @@ describe("HU10 – Listado de vehículos (INTEGRATION)", () => {
   // HU10_E02 – Usuario sin vehículos
   // =====================================================
   test("HU10_E02 – Devuelve lista vacía si no hay vehículos", async () => {
-    userRepositoryMock.findByEmail.mockResolvedValue({
+    userRepositoryMock.findById.mockResolvedValue({
       id: "user-1",
-      email: "usuario@test.com",
     });
 
     vehicleRepositoryMock.findByUser.mockResolvedValue([]);
 
-    const result = await vehicleService.listByUser("usuario@test.com");
+    const authUser = { id: "user-1" };
+
+    const result = await vehicleService.listByUser(authUser);
 
     expect(result).toEqual([]);
   });
 
   // =====================================================
-  // HU10_E03 – Usuario no autenticado
+  // HU10_E03 – Usuario no autenticado (sin authUser)
   // =====================================================
-  test("HU10_E03 – Lanza AuthenticationRequiredError si el usuario no existe", async () => {
-    userRepositoryMock.findByEmail.mockResolvedValue(null);
-
+  test("HU10_E03 – Lanza AuthenticationRequiredError si no hay authUser", async () => {
     await expect(
-      vehicleService.listByUser("anonimo@test.com")
+      vehicleService.listByUser(null as any)
     ).rejects.toThrow("AuthenticationRequiredError");
   });
 
   // =====================================================
-  // HU10_E04 – Error de conexión con BD
+  // HU10_E04 – Usuario inexistente
   // =====================================================
-  test("HU10_E04 – Error de BD lanza DatabaseConnectionError", async () => {
-    userRepositoryMock.findByEmail.mockResolvedValue({
-      id: "user-1",
-      email: "usuario@test.com",
-    });
+  test("HU10_E04 – Lanza AuthenticationRequiredError si el usuario no existe", async () => {
+    userRepositoryMock.findById.mockResolvedValue(null);
 
-    vehicleRepositoryMock.findByUser.mockRejectedValue(new Error("DB error"));
+    const authUser = { id: "user-1" };
 
     await expect(
-      vehicleService.listByUser("usuario@test.com")
-    ).rejects.toThrow("DatabaseConnectionError");
+      vehicleService.listByUser(authUser)
+    ).rejects.toThrow("AuthenticationRequiredError");
   });
 });
