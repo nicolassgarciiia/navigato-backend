@@ -12,12 +12,12 @@ import {
   UseGuards
 } from "@nestjs/common";
 import { RouteService } from "./application/route.service";
-import { RouteExceptionFilter } from "./route-exception.filter";
 import { CalculateRouteDto } from "./dto/calculate-route.dto";
 import { CalculateRouteByTypeDto } from "./dto/calculate-route-by-type.dto";
 import { CalculateRouteCostDto } from "./dto/calculate-route-cost.dto";
 import { SaveRouteDto } from "./dto/save-route.dto";
-import { SupabaseAuthGuard } from "../../../src/auth/supabase-auth.guard";
+import { SupabaseAuthGuard } from "../../auth/supabase-auth.guard";
+
 
 
 @Controller("routes")
