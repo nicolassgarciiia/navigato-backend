@@ -20,6 +20,19 @@ describe("HU22 – Establecer tipo de ruta por defecto (ACCEPTANCE)", () => {
     userService = moduleRef.get(UserService);
     preferencesService = moduleRef.get(UserPreferencesService);
 
+    // 🔐 Asegurar usuario de test (solo si no existe)
+    const existing = await userService.findByEmail(TEST_EMAIL);
+
+    if (!existing) {
+      await userService.register({
+        nombre: "Usuario",
+        apellidos: "Test ATDD",
+        correo: TEST_EMAIL,
+        contraseña: TEST_PASSWORD,
+        repetirContraseña: TEST_PASSWORD,
+        aceptaPoliticaPrivacidad: true,
+      });
+    }
   });
 
   // ==================================================

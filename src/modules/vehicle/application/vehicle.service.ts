@@ -31,27 +31,33 @@ export class VehicleService {
   // HU09 – Alta de vehículo
   // ======================================================
   async createVehicle(
-    userEmail: string,
-    nombre: string,
-    matricula: string,
-    tipo: "COMBUSTION" | "ELECTRICO",
-    consumo: number
-  ): Promise<Vehicle> {
-    const user = await this.getUserByEmail(userEmail);
+  userEmail: string,
+  nombre: string,
+  matricula: string,
+  tipo: "COMBUSTION" | "ELECTRICO",
+  consumo: number,
+  favorito: boolean = false
+): Promise<Vehicle> {
+  const user = await this.getUserByEmail(userEmail);
 
-    this.validateConsumption(consumo);
+  this.validateConsumption(consumo);
 
-    const vehicle = this.createVehicleEntity({
-      nombre,
-      matricula,
-      tipo,
-      consumo,
-    });
+  const vehicle = new Vehicle({
+    id: randomUUID(),     
+    nombre,
+    matricula,
+    tipo,
+    consumo,
+    favorito,
+  });
 
-    await this.persistVehicle(vehicle, user.id);
+  await this.persistVehicle(vehicle, user.id);
 
-    return vehicle;
-  }
+  return vehicle;
+}
+
+
+
 
   // ======================================================
   // HU10 – Listado de vehículos del usuario
@@ -118,7 +124,7 @@ export class VehicleService {
 async toggleVehicleFavorite(
   userEmail: string,
   vehicleId: string
-): Promise<void> {
+): Promise<boolean> {
   const user = await this.getUserByEmail(userEmail);
 
   const vehicle = await this.vehicleRepository.findByIdAndUser(
@@ -137,7 +143,10 @@ async toggleVehicleFavorite(
   } catch {
     throw new DatabaseConnectionError();
   }
+
+  return vehicle.favorito;
 }
+
 
 
 

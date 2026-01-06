@@ -4,7 +4,8 @@ import { RouteModule } from "../../../src/modules/route/route.module";
 import { RouteService } from "../../../src/modules/route/application/route.service";
 import { POIService } from "../../../src/modules/poi/application/poi.service";
 import { POIModule } from "../../../src/modules/poi/poi.module";
-import { TEST_EMAIL } from "../../helpers/test-constants";
+import { UserService } from "../../../src/modules/user/application/user.service";
+import { TEST_EMAIL, TEST_PASSWORD } from "../../helpers/test-constants";
 import { randomUUID } from "crypto";
 import * as dotenv from "dotenv";
 
@@ -13,6 +14,7 @@ dotenv.config();
 describe("HU13 – Calcular ruta entre dos lugares (ATDD)", () => {
   let routeService: RouteService;
   let poiService: POIService;
+  let userService: UserService;
 
   let poiIdsToDelete: string[] = [];
 
@@ -23,13 +25,33 @@ describe("HU13 – Calcular ruta entre dos lugares (ATDD)", () => {
 
     routeService = moduleRef.get(RouteService);
     poiService = moduleRef.get(POIService);
+    userService = moduleRef.get(UserService);
+
+    // 🔐 Asegurar usuario de test (UNA SOLA VEZ)
+    const user = await userService.findByEmail(TEST_EMAIL);
+
+    if (!user) {
+      await userService.register({
+        nombre: "Usuario",
+        apellidos: "Test ATDD",
+        correo: TEST_EMAIL,
+        contraseña: TEST_PASSWORD,
+        repetirContraseña: TEST_PASSWORD,
+        aceptaPoliticaPrivacidad: true,
+      });
+    }
   });
 
+  // ======================================
+  // Limpieza SOLO de POIs creados en el test
+  // ======================================
   afterEach(async () => {
     for (const poiId of poiIdsToDelete) {
       try {
         await poiService.delete(poiId);
-      } catch {}
+      } catch {
+        // limpieza best-effort
+      }
     }
     poiIdsToDelete = [];
   });

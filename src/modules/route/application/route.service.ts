@@ -20,7 +20,7 @@ import {
 
 import { FuelCostStrategy } from "../infrastructure/strategies/fuel-cost.strategy";
 import { CalorieCostStrategy } from "../infrastructure/strategies/calorie-cost.strategy";
-import { UserPreferencesService } from "src/modules/user-preferences/application/user-preferences.service";
+import { UserPreferencesService } from "../../user-preferences/application/user-preferences.service";
 type RouteType = "rapida" | "corta" | "economica";
 @Injectable()
 export class RouteService {

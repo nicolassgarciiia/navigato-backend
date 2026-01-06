@@ -82,23 +82,47 @@ export class UserPreferencesService {
       throw new DatabaseConnectionError();
     }
   }
+// ======================================================
+// Quitar vehículo por defecto (NUEVO)
+// ======================================================
+async clearDefaultVehicle(userEmail: string): Promise<void> {
+  const user = await this.userRepository.findByEmail(userEmail);
+  if (!user) {
+    throw new AuthenticationRequiredError();
+  }
 
-  // ======================================================
-  // Obtener preferencias del usuario
-  // ======================================================
-  async getByUser(userEmail: string): Promise<UserPreferences> {
-    const user = await this.userRepository.findByEmail(userEmail);
-    if (!user) {
-      throw new AuthenticationRequiredError();
-    }
-
-    try {
-      return (
-        (await this.preferencesRepository.findByUserId(user.id)) ??
-        new UserPreferences({ userId: user.id })
-      );
-    } catch {
-      throw new DatabaseConnectionError();
-    }
+  try {
+    await this.preferencesRepository.clearDefaultVehicle(user.id);
+  } catch {
+    throw new DatabaseConnectionError();
   }
 }
+
+// ======================================================
+// Obtener preferencias del usuario (DEFINITIVO)
+// ======================================================
+
+async getByUser(userEmail: string): Promise<UserPreferences> {
+  const user = await this.userRepository.findByEmail(userEmail);
+  if (!user) {
+    throw new AuthenticationRequiredError();
+  }
+
+  let prefs: UserPreferences | null = null;
+
+  try {
+    prefs = await this.preferencesRepository.findByUserId(user.id);
+  } catch {
+    // si falla la BD, lanzamos error
+    throw new DatabaseConnectionError();
+  }
+
+  return new UserPreferences({
+    userId: user.id,
+    defaultVehicleId: prefs?.defaultVehicleId,
+    defaultRouteType: prefs?.defaultRouteType,
+  });
+}
+
+}
+

@@ -4,7 +4,8 @@ import { POIModule } from "../../../src/modules/poi/poi.module";
 import { RouteModule } from "../../../src/modules/route/route.module";
 import { POIService } from "../../../src/modules/poi/application/poi.service";
 import { RouteService } from "../../../src/modules/route/application/route.service";
-import { TEST_EMAIL } from "../../helpers/test-constants";
+import { UserService } from "../../../src/modules/user/application/user.service";
+import { TEST_EMAIL, TEST_PASSWORD } from "../../helpers/test-constants";
 import { randomUUID } from "crypto";
 import * as dotenv from "dotenv";
 
@@ -13,6 +14,7 @@ dotenv.config();
 describe("HU15 – Calcular coste calórico de una ruta (ATDD)", () => {
   let poiService: POIService;
   let routeService: RouteService;
+  let userService: UserService;
 
   let poiIdsToDelete: string[] = [];
 
@@ -23,6 +25,21 @@ describe("HU15 – Calcular coste calórico de una ruta (ATDD)", () => {
 
     poiService = moduleRef.get(POIService);
     routeService = moduleRef.get(RouteService);
+    userService = moduleRef.get(UserService);
+
+    // 🔐 Asegurar usuario de test (UNA SOLA VEZ)
+    const user = await userService.findByEmail(TEST_EMAIL);
+
+    if (!user) {
+      await userService.register({
+        nombre: "Usuario",
+        apellidos: "Test ATDD",
+        correo: TEST_EMAIL,
+        contraseña: TEST_PASSWORD,
+        repetirContraseña: TEST_PASSWORD,
+        aceptaPoliticaPrivacidad: true,
+      });
+    }
   });
 
   // ======================================
@@ -32,7 +49,9 @@ describe("HU15 – Calcular coste calórico de una ruta (ATDD)", () => {
     for (const poiId of poiIdsToDelete) {
       try {
         await poiService.delete(poiId);
-      } catch {}
+      } catch {
+        // limpieza best-effort
+      }
     }
     poiIdsToDelete = [];
   });
@@ -50,6 +69,7 @@ describe("HU15 – Calcular coste calórico de una ruta (ATDD)", () => {
       39.9869,
       -0.0513
     );
+
     const destino = await poiService.createPOI(
       TEST_EMAIL,
       destinoName,

@@ -6,7 +6,7 @@ import { POIService } from "../../../src/modules/poi/application/poi.service";
 import { RouteService } from "../../../src/modules/route/application/route.service";
 import { UserService } from "../../../src/modules/user/application/user.service";
 import * as dotenv from "dotenv";
-import { TEST_EMAIL } from "../../helpers/test-constants";
+import { TEST_EMAIL, TEST_PASSWORD } from "../../helpers/test-constants";
 import { randomUUID } from "crypto";
 
 dotenv.config();
@@ -27,6 +27,19 @@ describe("HU17 – Guardar ruta (ATDD)", () => {
     userService = moduleRef.get(UserService);
     poiService = moduleRef.get(POIService);
     routeService = moduleRef.get(RouteService);
+
+    // 🔐 Asegurar usuario de test (UNA SOLA VEZ)
+    const user = await userService.findByEmail(TEST_EMAIL);
+    if (!user) {
+      await userService.register({
+        nombre: "Usuario",
+        apellidos: "Test ATDD",
+        correo: TEST_EMAIL,
+        contraseña: TEST_PASSWORD,
+        repetirContraseña: TEST_PASSWORD,
+        aceptaPoliticaPrivacidad: true,
+      });
+    }
   });
 
   // ==================================================
@@ -72,7 +85,6 @@ describe("HU17 – Guardar ruta (ATDD)", () => {
 
     poiIdsToDelete.push(casa.id, trabajo.id);
 
-    // 🔴 CAMBIO CLAVE: usar coordenadas
     await routeService.calculateRoute(
       TEST_EMAIL,
       { lat: casa.latitud, lng: casa.longitud },
@@ -80,15 +92,19 @@ describe("HU17 – Guardar ruta (ATDD)", () => {
       "vehiculo"
     );
 
+    const routeName = "Ruta al trabajo HU17";
+
     const saved = await routeService.saveRoute(
       TEST_EMAIL,
-      "Ruta al trabajo HU17"
+      routeName
     );
 
-    savedRouteNamesToDelete.push("Ruta al trabajo HU17");
+    savedRouteNamesToDelete.push(routeName);
 
     expect(saved).toBeDefined();
-    expect(saved.nombre).toBe("Ruta al trabajo HU17");
+    expect(saved.nombre).toBe(routeName);
+    expect(saved.favorito).toBe(false);
+    expect(saved.fechaGuardado).toBeDefined();
   });
 
   // ======================================

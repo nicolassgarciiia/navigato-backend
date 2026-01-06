@@ -5,7 +5,7 @@ import { RouteModule } from "../../../src/modules/route/route.module";
 import { UserService } from "../../../src/modules/user/application/user.service";
 import { POIService } from "../../../src/modules/poi/application/poi.service";
 import { RouteService } from "../../../src/modules/route/application/route.service";
-import * as crypto from "crypto";
+import { TEST_EMAIL, TEST_PASSWORD } from "../../helpers/test-constants";
 import * as dotenv from "dotenv";
 
 dotenv.config();
@@ -15,8 +15,9 @@ describe("HU18 – Lista rutas guardadas (ATDD)", () => {
   let poiService: POIService;
   let routeService: RouteService;
 
-  const email = `hu18_${crypto.randomUUID()}@test.com`;
-  const password = "ValidPass1!";
+  let poiIdsToDelete: string[] = [];
+
+  const ROUTE_NAME = "Ruta HU18";
 
   // ======================================
   // SETUP
@@ -30,56 +31,74 @@ describe("HU18 – Lista rutas guardadas (ATDD)", () => {
     poiService = moduleRef.get(POIService);
     routeService = moduleRef.get(RouteService);
 
-    // Usuario
-    await userService.register({
-      nombre: "Usuario",
-      apellidos: "HU18",
-      correo: email,
-      contraseña: password,
-      repetirContraseña: password,
-      aceptaPoliticaPrivacidad: true,
-    });
+    // 🔐 Asegurar usuario de test (UNA SOLA VEZ)
+    const user = await userService.findByEmail(TEST_EMAIL);
+    if (!user) {
+      await userService.register({
+        nombre: "Usuario",
+        apellidos: "Test ATDD",
+        correo: TEST_EMAIL,
+        contraseña: TEST_PASSWORD,
+        repetirContraseña: TEST_PASSWORD,
+        aceptaPoliticaPrivacidad: true,
+      });
+    }
 
-    // POIs
+    // Crear POIs necesarios
     const origen = await poiService.createPOI(
-      email,
+      TEST_EMAIL,
       "Casa HU18",
       39.9869,
       -0.0513
     );
 
     const destino = await poiService.createPOI(
-      email,
+      TEST_EMAIL,
       "Trabajo HU18",
       40.4168,
       -3.7038
     );
 
-    // 🔑 CAMBIO IMPORTANTE: coordenadas
+    poiIdsToDelete.push(origen.id, destino.id);
+
+    // Calcular y guardar ruta
     await routeService.calculateRoute(
-      email,
+      TEST_EMAIL,
       { lat: origen.latitud, lng: origen.longitud },
       { lat: destino.latitud, lng: destino.longitud },
       "vehiculo"
     );
 
-    await routeService.saveRoute(email, "Ruta HU18");
+    await routeService.saveRoute(TEST_EMAIL, ROUTE_NAME);
   });
 
+  // ======================================
+  // LIMPIEZA
+  // ======================================
   afterAll(async () => {
-    await userService.deleteByEmail(email);
+    // Limpiar POIs creados
+    for (const poiId of poiIdsToDelete) {
+      try {
+        await poiService.delete(poiId);
+      } catch {}
+    }
+
+    // Limpiar ruta si quedó (best-effort)
+    try {
+      await routeService.delete(TEST_EMAIL, ROUTE_NAME);
+    } catch {}
   });
 
   // ======================================
   // HU18_E01 – Escenario válido
   // ======================================
   test("HU18_E01 – Lista las rutas guardadas del usuario", async () => {
-    const routes = await routeService.listSavedRoutes(email);
+    const routes = await routeService.listSavedRoutes(TEST_EMAIL);
 
     expect(Array.isArray(routes)).toBe(true);
     expect(routes.length).toBeGreaterThan(0);
 
-    const route = routes.find(r => r.nombre === "Ruta HU18");
+    const route = routes.find(r => r.nombre === ROUTE_NAME);
     expect(route).toBeDefined();
     expect(route?.favorito).toBe(false);
     expect(route?.fechaGuardado).toBeDefined();

@@ -2,7 +2,7 @@ import { Test } from "@nestjs/testing";
 import { UserModule } from "../../../src/modules/user/user.module";
 import { UserService } from "../../../src/modules/user/application/user.service";
 import * as dotenv from "dotenv";
-import { TEST_EMAIL, TEST_PASSWORD} from "../../helpers/test-constants";
+import { TEST_EMAIL, TEST_PASSWORD } from "../../helpers/test-constants";
 
 dotenv.config();
 
@@ -16,6 +16,19 @@ describe("HU02 – Inicio de sesión (ATDD)", () => {
 
     service = moduleRef.get(UserService);
 
+    // 🔐 Asegurar usuario de test (solo si no existe)
+    const existing = await service.findByEmail(TEST_EMAIL);
+
+    if (!existing) {
+      await service.register({
+        nombre: "Usuario",
+        apellidos: "Test ATDD",
+        correo: TEST_EMAIL,
+        contraseña: TEST_PASSWORD,
+        repetirContraseña: TEST_PASSWORD,
+        aceptaPoliticaPrivacidad: true,
+      });
+    }
   });
 
   // =======================================================

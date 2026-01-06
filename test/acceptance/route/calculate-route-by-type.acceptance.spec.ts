@@ -2,13 +2,18 @@ import { Test } from "@nestjs/testing";
 import { UserModule } from "../../../src/modules/user/user.module";
 import { RouteModule } from "../../../src/modules/route/route.module";
 import { RouteService } from "../../../src/modules/route/application/route.service";
-import { TEST_EMAIL } from "../../helpers/test-constants";
+import { UserService } from "../../../src/modules/user/application/user.service";
+import { TEST_EMAIL, TEST_PASSWORD } from "../../helpers/test-constants";
 import * as dotenv from "dotenv";
 
 dotenv.config();
 
 describe("HU16 – Calcular ruta según criterio (ATDD)", () => {
   let routeService: RouteService;
+  let userService: UserService;
+
+  const ORIGEN = { lat: 39.9869, lng: -0.0513 };
+  const DESTINO = { lat: 40.4168, lng: -3.7038 };
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -16,10 +21,22 @@ describe("HU16 – Calcular ruta según criterio (ATDD)", () => {
     }).compile();
 
     routeService = moduleRef.get(RouteService);
-  });
+    userService = moduleRef.get(UserService);
 
-  const ORIGEN = { lat: 39.9869, lng: -0.0513 };
-  const DESTINO = { lat: 40.4168, lng: -3.7038 };
+    // 🔐 Asegurar usuario de test (UNA SOLA VEZ)
+    const user = await userService.findByEmail(TEST_EMAIL);
+
+    if (!user) {
+      await userService.register({
+        nombre: "Usuario",
+        apellidos: "Test ATDD",
+        correo: TEST_EMAIL,
+        contraseña: TEST_PASSWORD,
+        repetirContraseña: TEST_PASSWORD,
+        aceptaPoliticaPrivacidad: true,
+      });
+    }
+  });
 
   // ======================================
   // HU16_E01 – Ruta más rápida

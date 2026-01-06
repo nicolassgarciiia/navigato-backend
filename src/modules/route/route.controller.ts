@@ -17,7 +17,7 @@ import { CalculateRouteDto } from "./dto/calculate-route.dto";
 import { CalculateRouteByTypeDto } from "./dto/calculate-route-by-type.dto";
 import { CalculateRouteCostDto } from "./dto/calculate-route-cost.dto";
 import { SaveRouteDto } from "./dto/save-route.dto";
-import { SupabaseAuthGuard } from "src/auth/supabase-auth.guard";
+import { SupabaseAuthGuard } from "../../../src/auth/supabase-auth.guard";
 
 
 @Controller("routes")
