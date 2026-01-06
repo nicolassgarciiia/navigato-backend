@@ -6,7 +6,7 @@ import { POIService } from "../../../src/modules/poi/application/poi.service";
 import { RouteService } from "../../../src/modules/route/application/route.service";
 import { UserService } from "../../../src/modules/user/application/user.service";
 import * as dotenv from "dotenv";
-import { TEST_EMAIL } from "../../helpers/test-constants";
+import { TEST_EMAIL, TEST_PASSWORD } from "../../helpers/test-constants";
 import { randomUUID } from "crypto";
 
 dotenv.config();
@@ -15,6 +15,7 @@ describe("HU17 – Guardar ruta (ATDD)", () => {
   let userService: UserService;
   let poiService: POIService;
   let routeService: RouteService;
+
   let poiIdsToDelete: string[] = [];
   let savedRouteNamesToDelete: string[] = [];
 
@@ -26,6 +27,19 @@ describe("HU17 – Guardar ruta (ATDD)", () => {
     userService = moduleRef.get(UserService);
     poiService = moduleRef.get(POIService);
     routeService = moduleRef.get(RouteService);
+
+    // 🔐 Asegurar usuario de test (UNA SOLA VEZ)
+    const user = await userService.findByEmail(TEST_EMAIL);
+    if (!user) {
+      await userService.register({
+        nombre: "Usuario",
+        apellidos: "Test ATDD",
+        correo: TEST_EMAIL,
+        contraseña: TEST_PASSWORD,
+        repetirContraseña: TEST_PASSWORD,
+        aceptaPoliticaPrivacidad: true,
+      });
+    }
   });
 
   // ==================================================
@@ -52,42 +66,46 @@ describe("HU17 – Guardar ruta (ATDD)", () => {
   // HU17_E01 – Escenario válido
   // ======================================
   test("HU17_E01 – Guarda una ruta calculada correctamente", async () => {
-  const casaName = `Casa HU17 ${randomUUID()}`;
-  const trabajoName = `Trabajo HU17 ${randomUUID()}`;
+    const casaName = `Casa HU17 ${randomUUID()}`;
+    const trabajoName = `Trabajo HU17 ${randomUUID()}`;
 
-  const casa = await poiService.createPOI(
-    TEST_EMAIL,
-    casaName,
-    39.9869,
-    -0.0513
-  );
+    const casa = await poiService.createPOI(
+      TEST_EMAIL,
+      casaName,
+      39.9869,
+      -0.0513
+    );
 
-  const trabajo = await poiService.createPOI(
-    TEST_EMAIL,
-    trabajoName,
-    40.4168,
-    -3.7038
-  );
+    const trabajo = await poiService.createPOI(
+      TEST_EMAIL,
+      trabajoName,
+      40.4168,
+      -3.7038
+    );
 
-  poiIdsToDelete.push(casa.id, trabajo.id);
+    poiIdsToDelete.push(casa.id, trabajo.id);
 
-  await routeService.calculateRoute(
-    TEST_EMAIL,
-    casaName,
-    trabajoName,
-    "vehiculo"
-  );
+    await routeService.calculateRoute(
+      TEST_EMAIL,
+      { lat: casa.latitud, lng: casa.longitud },
+      { lat: trabajo.latitud, lng: trabajo.longitud },
+      "vehiculo"
+    );
 
-  const saved = await routeService.saveRoute(
-    TEST_EMAIL,
-    "Ruta al trabajo HU17"
-  );
+    const routeName = "Ruta al trabajo HU17";
 
-  savedRouteNamesToDelete.push("Ruta al trabajo HU17");
+    const saved = await routeService.saveRoute(
+      TEST_EMAIL,
+      routeName
+    );
 
-  expect(saved).toBeDefined();
-});
+    savedRouteNamesToDelete.push(routeName);
 
+    expect(saved).toBeDefined();
+    expect(saved.nombre).toBe(routeName);
+    expect(saved.favorito).toBe(false);
+    expect(saved.fechaGuardado).toBeDefined();
+  });
 
   // ======================================
   // HU17_E02 – Ruta no calculada

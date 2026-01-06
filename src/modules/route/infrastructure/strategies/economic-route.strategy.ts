@@ -1,17 +1,15 @@
 import { RouteStrategy } from "../../domain/route-strategy.interface";
-import { Route } from "../../domain/route.entity";
-import * as crypto from "crypto";
 
 export class EconomicRouteStrategy implements RouteStrategy {
-  async calculate(origen: any, destino: any, metodo: string): Promise<Route> {
-    return new Route({
-      id: crypto.randomUUID(),
+  async calculate(origen, destino, metodo, routingAdapter) {
+    const route = await routingAdapter.calculate(
       origen,
       destino,
-      metodoMovilidad: metodo,
-      distancia: 10000,
-      duracion: 1200,
-      tipo: "economica",
-    });
+      metodo,
+      "economica"
+    );
+
+    route.tipo = "economica";
+    return route;
   }
 }

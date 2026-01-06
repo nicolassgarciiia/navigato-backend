@@ -3,10 +3,9 @@ import { VehicleModule } from "../../../src/modules/vehicle/vehicle.module";
 import { UserModule } from "../../../src/modules/user/user.module";
 import { VehicleService } from "../../../src/modules/vehicle/application/vehicle.service";
 import { UserService } from "../../../src/modules/user/application/user.service";
-import { Vehicle } from "../../../src/modules/vehicle/domain/vehicle.entity";
 import { VehicleNotFoundError } from "../../../src/modules/vehicle/domain/errors";
 import * as dotenv from "dotenv";
-import { TEST_EMAIL } from "../../helpers/test-constants";
+import { TEST_EMAIL, TEST_PASSWORD } from "../../helpers/test-constants";
 import * as crypto from "crypto";
 
 dotenv.config();
@@ -16,6 +15,7 @@ describe("HU11 – Borrado de vehículo (ATDD)", () => {
   let userService: UserService;
 
   let vehicleIdsToDelete: string[] = [];
+  let userId: string;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -25,6 +25,23 @@ describe("HU11 – Borrado de vehículo (ATDD)", () => {
     vehicleService = moduleRef.get(VehicleService);
     userService = moduleRef.get(UserService);
 
+    // 🔐 Asegurar usuario de test (UNA SOLA VEZ)
+    const user = await userService.findByEmail(TEST_EMAIL);
+
+    if (!user) {
+      await userService.register({
+        nombre: "Usuario",
+        apellidos: "Test ATDD",
+        correo: TEST_EMAIL,
+        contraseña: TEST_PASSWORD,
+        repetirContraseña: TEST_PASSWORD,
+        aceptaPoliticaPrivacidad: true,
+      });
+      const created = await userService.findByEmail(TEST_EMAIL);
+      userId = created!.id;
+    } else {
+      userId = user.id;
+    }
   });
 
   // ==================================================
@@ -35,6 +52,7 @@ describe("HU11 – Borrado de vehículo (ATDD)", () => {
       try {
         await vehicleService.delete(vehicleId);
       } catch {
+        // limpieza best-effort
       }
     }
     vehicleIdsToDelete = [];
@@ -44,7 +62,7 @@ describe("HU11 – Borrado de vehículo (ATDD)", () => {
   // HU11_E01 – Eliminación exitosa
   // ======================================================
   test("HU11_E01 – Eliminación exitosa del vehículo", async () => {
-    const vehicleToDelete: Vehicle = await vehicleService.createVehicle(
+    const vehicleToDelete = await vehicleService.createVehicle(
       TEST_EMAIL,
       "Vehículo a borrar",
       "1234ABC",
@@ -53,7 +71,7 @@ describe("HU11 – Borrado de vehículo (ATDD)", () => {
     );
     vehicleIdsToDelete.push(vehicleToDelete.id);
 
-    const backupVehicle: Vehicle = await vehicleService.createVehicle(
+    const backupVehicle = await vehicleService.createVehicle(
       TEST_EMAIL,
       "Vehículo respaldo",
       "5678DEF",
@@ -62,14 +80,17 @@ describe("HU11 – Borrado de vehículo (ATDD)", () => {
     );
     vehicleIdsToDelete.push(backupVehicle.id);
 
+    // ACT
     await vehicleService.deleteVehicle(TEST_EMAIL, vehicleToDelete.id);
 
+    // evitar doble borrado en afterEach
     vehicleIdsToDelete = vehicleIdsToDelete.filter(
       (id) => id !== vehicleToDelete.id
     );
 
+    // ASSERT
     const vehiclesAfterDeletion =
-      await vehicleService.listByUser(TEST_EMAIL);
+      await vehicleService.listByUser({ id: userId });
 
     expect(
       vehiclesAfterDeletion.find((v) => v.id === vehicleToDelete.id)

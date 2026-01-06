@@ -2,10 +2,9 @@ import { Route } from "../../domain/route.entity";
 
 export interface RoutingAdapter {
   calculate(
-    origen: any,
-    destino: any,
-    metodo: string
+    origen: { lat: number; lng: number },
+    destino: { lat: number; lng: number },
+    metodo: string,
+    preference?: "fastest" | "shortest" | "recommended"
   ): Promise<Route>;
 }
-
-

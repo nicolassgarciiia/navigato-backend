@@ -31,40 +31,57 @@ export class VehicleService {
   // HU09 – Alta de vehículo
   // ======================================================
   async createVehicle(
-    userEmail: string,
-    nombre: string,
-    matricula: string,
-    tipo: "COMBUSTION" | "ELECTRICO",
-    consumo: number
-  ): Promise<Vehicle> {
-    const user = await this.getAuthenticatedUser(userEmail);
+  userEmail: string,
+  nombre: string,
+  matricula: string,
+  tipo: "COMBUSTION" | "ELECTRICO",
+  consumo: number,
+  favorito: boolean = false
+): Promise<Vehicle> {
+  const user = await this.getUserByEmail(userEmail);
 
-    this.validateConsumption(consumo);
+  this.validateConsumption(consumo);
 
-    const vehicle = this.createVehicleEntity({
-      nombre,
-      matricula,
-      tipo,
-      consumo,
-    });
+  const vehicle = new Vehicle({
+    id: randomUUID(),     
+    nombre,
+    matricula,
+    tipo,
+    consumo,
+    favorito,
+  });
 
-    await this.persistVehicle(vehicle, user.id);
+  await this.persistVehicle(vehicle, user.id);
 
-    return vehicle;
-  }
+  return vehicle;
+}
+
+
+
 
   // ======================================================
   // HU10 – Listado de vehículos del usuario
   // ======================================================
-  async listByUser(userEmail: string): Promise<Vehicle[]> {
-    const user = await this.getAuthenticatedUser(userEmail);
+  async listByUser(authUser: any): Promise<Vehicle[]> {
+  const userId = authUser?.id;
 
-    try {
-      return await this.vehicleRepository.findByUser(user.id);
-    } catch {
-      throw new DatabaseConnectionError();
-    }
+  if (!userId) {
+    throw new AuthenticationRequiredError();
   }
+
+  const user = await this.userRepository.findById(userId);
+  if (!user) {
+    throw new AuthenticationRequiredError();
+  }
+
+  try {
+    return await this.vehicleRepository.findByUser(user.id);
+  } catch {
+    throw new DatabaseConnectionError();
+  }
+}
+
+
 
   // ======================================================
   // HU11 – Borrado de vehículo
@@ -107,8 +124,8 @@ export class VehicleService {
 async toggleVehicleFavorite(
   userEmail: string,
   vehicleId: string
-): Promise<void> {
-  const user = await this.getAuthenticatedUser(userEmail);
+): Promise<boolean> {
+  const user = await this.getUserByEmail(userEmail);
 
   const vehicle = await this.vehicleRepository.findByIdAndUser(
     vehicleId,
@@ -126,7 +143,10 @@ async toggleVehicleFavorite(
   } catch {
     throw new DatabaseConnectionError();
   }
+
+  return vehicle.favorito;
 }
+
 
 
 
@@ -134,19 +154,22 @@ async toggleVehicleFavorite(
   // Helpers privados
   // ======================================================
 
-  private async getAuthenticatedUser(userEmail: string) {
-    const user = await this.userRepository.findByEmail(userEmail);
-    if (!user) {
-      throw new AuthenticationRequiredError();
-    }
-    return user;
+  private async getUserByEmail(email: string) {
+  const user = await this.userRepository.findByEmail(email);
+
+  if (!user) {
+    throw new AuthenticationRequiredError(); // 
   }
+
+  return user;
+}
+
 
   private async getUserVehicleOrFail(
     userEmail: string,
     vehicleId: string
   ): Promise<Vehicle> {
-    const user = await this.getAuthenticatedUser(userEmail);
+    const user = await this.getUserByEmail(userEmail);
 
     let vehicle: Vehicle | null;
     try {

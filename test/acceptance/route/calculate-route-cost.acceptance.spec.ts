@@ -6,7 +6,8 @@ import { VehicleService } from "../../../src/modules/vehicle/application/vehicle
 import { RouteService } from "../../../src/modules/route/application/route.service";
 import { POIService } from "../../../src/modules/poi/application/poi.service";
 import { POIModule } from "../../../src/modules/poi/poi.module";
-import { TEST_EMAIL } from "../../helpers/test-constants";
+import { UserService } from "../../../src/modules/user/application/user.service";
+import { TEST_EMAIL, TEST_PASSWORD } from "../../helpers/test-constants";
 import { randomUUID } from "crypto";
 import * as dotenv from "dotenv";
 
@@ -16,8 +17,8 @@ describe("HU14 – Calcular coste de ruta en vehículo (ATDD)", () => {
   let vehicleService: VehicleService;
   let routeService: RouteService;
   let poiService: POIService;
+  let userService: UserService;
 
-  let poiIdsToDelete: string[] = [];
   let vehicleIdsToDelete: string[] = [];
 
   beforeAll(async () => {
@@ -28,24 +29,34 @@ describe("HU14 – Calcular coste de ruta en vehículo (ATDD)", () => {
     vehicleService = moduleRef.get(VehicleService);
     routeService = moduleRef.get(RouteService);
     poiService = moduleRef.get(POIService);
+    userService = moduleRef.get(UserService);
+
+    // 🔐 Asegurar usuario de test (UNA SOLA VEZ)
+    const user = await userService.findByEmail(TEST_EMAIL);
+
+    if (!user) {
+      await userService.register({
+        nombre: "Usuario",
+        apellidos: "Test ATDD",
+        correo: TEST_EMAIL,
+        contraseña: TEST_PASSWORD,
+        repetirContraseña: TEST_PASSWORD,
+        aceptaPoliticaPrivacidad: true,
+      });
+    }
   });
 
-  // ======================================
-  // Limpieza SOLO de datos creados en el test
-  // ======================================
+  // ==================================================
+  // Limpieza SOLO de vehículos creados en el test
+  // ==================================================
   afterEach(async () => {
-    for (const poiId of poiIdsToDelete) {
-      try {
-        await poiService.delete(poiId);
-      } catch {}
-    }
     for (const vehicleId of vehicleIdsToDelete) {
       try {
         await vehicleService.delete(vehicleId);
-      } catch {}
+      } catch {
+        // limpieza best-effort
+      }
     }
-
-    poiIdsToDelete = [];
     vehicleIdsToDelete = [];
   });
 
@@ -53,26 +64,11 @@ describe("HU14 – Calcular coste de ruta en vehículo (ATDD)", () => {
   // HU14_E01 – Escenario válido
   // ======================================
   test("HU14_E01 – Calcula el coste de combustible de una ruta", async () => {
-    const origenName = `Casa-${randomUUID()}`;
-    const destinoName = `Trabajo-${randomUUID()}`;
     const vehicleName = `Coche-${randomUUID()}`;
 
-    // POIs
-    const origen = await poiService.createPOI(
-      TEST_EMAIL,
-      origenName,
-      39.9869,
-      -0.0513
-    );
-    const destino = await poiService.createPOI(
-      TEST_EMAIL,
-      destinoName,
-      40.4168,
-      -3.7038
-    );
-    poiIdsToDelete.push(origen.id, destino.id);
+    const origen = { lat: 39.9869, lng: -0.0513 };
+    const destino = { lat: 40.4168, lng: -3.7038 };
 
-    // Vehículo
     const vehicle = await vehicleService.createVehicle(
       TEST_EMAIL,
       vehicleName,
@@ -82,15 +78,13 @@ describe("HU14 – Calcular coste de ruta en vehículo (ATDD)", () => {
     );
     vehicleIdsToDelete.push(vehicle.id);
 
-    // Ruta
     await routeService.calculateRoute(
       TEST_EMAIL,
-      origenName,
-      destinoName,
+      origen,
+      destino,
       "vehiculo"
     );
 
-    // Coste
     const cost = await routeService.calculateRouteCostWithVehicle(
       TEST_EMAIL,
       vehicleName

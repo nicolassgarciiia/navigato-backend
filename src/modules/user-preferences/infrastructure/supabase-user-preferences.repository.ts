@@ -35,35 +35,55 @@ export class SupabaseUserPreferencesRepository
   }
 
   async setDefaultVehicle(
-  userId: string,
-  vehicleId: string
-): Promise<void> {
+    userId: string,
+    vehicleId: string
+  ): Promise<void> {
+    const { error } = await this.supabase
+      .from("user_preferences")
+      .upsert(
+        {
+          user_id: userId,
+          default_vehicle_id: vehicleId,
+        },
+        {
+          onConflict: "user_id",
+        }
+      );
+
+    if (error) {
+      throw error;
+    }
+  }
+
+  async setDefaultRouteType(
+    userId: string,
+    routeType: string
+  ): Promise<void> {
+    const { error } = await this.supabase
+      .from("user_preferences")
+      .upsert(
+        {
+          user_id: userId,
+          default_route_type: routeType,
+        },
+        {
+          onConflict: "user_id", 
+        }
+      );
+
+    if (error) {
+      throw error;
+    }
+  }
+  async clearDefaultVehicle(userId: string): Promise<void> {
   const { error } = await this.supabase
     .from("user_preferences")
-    .upsert({
-      user_id: userId,
-      default_vehicle_id: vehicleId,
-    });
+    .update({ default_vehicle_id: null })
+    .eq("user_id", userId);
 
   if (error) {
     throw error;
   }
 }
-async setDefaultRouteType(
-  userId: string,
-  routeType: string
-): Promise<void> {
-  const { error } = await this.supabase
-    .from("user_preferences")
-    .upsert({
-      user_id: userId,
-      default_route_type: routeType,
-    });
-
-  if (error) {
-    throw error;
-  }
-}
-
 
 }

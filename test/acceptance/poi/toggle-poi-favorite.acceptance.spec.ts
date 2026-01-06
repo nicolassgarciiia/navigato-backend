@@ -21,13 +21,32 @@ describe("POI – ATDD / Integration", () => {
 
     poiService = moduleRef.get(POIService);
     userService = moduleRef.get(UserService);
+
+    // 🔐 Asegurar usuario de test (UNA SOLA VEZ)
+    const user = await userService.findByEmail(TEST_EMAIL);
+
+    if (!user) {
+      await userService.register({
+        nombre: "Usuario",
+        apellidos: "Test ATDD",
+        correo: TEST_EMAIL,
+        contraseña: TEST_PASSWORD,
+        repetirContraseña: TEST_PASSWORD,
+        aceptaPoliticaPrivacidad: true,
+      });
+    }
   });
 
+  // ======================================================
+  // Limpieza: usar borrado directo (no lógica de negocio)
+  // ======================================================
   afterEach(async () => {
     for (const poiId of poiIdsToDelete) {
       try {
-        await poiService.deletePOI(TEST_EMAIL, poiId);
-      } catch {}
+        await poiService.delete(poiId);
+      } catch {
+        // limpieza best-effort
+      }
     }
     poiIdsToDelete = [];
   });
@@ -71,7 +90,7 @@ describe("POI – ATDD / Integration", () => {
 
     const pois = await poiService.listByUser(TEST_EMAIL);
 
-    expect(pois.length).toBeGreaterThan(0);
+    expect(Array.isArray(pois)).toBe(true);
     expect(pois.some(p => p.id === poi.id)).toBe(true);
   });
 
@@ -118,6 +137,7 @@ describe("POI – ATDD / Integration", () => {
     const pois = await poiService.listByUser(TEST_EMAIL);
     const updated = pois.find(p => p.id === poi.id);
 
+    expect(updated).toBeDefined();
     expect(updated!.favorito).toBe(true);
   });
 
@@ -136,6 +156,7 @@ describe("POI – ATDD / Integration", () => {
     const pois = await poiService.listByUser(TEST_EMAIL);
     const updated = pois.find(p => p.id === poi.id);
 
+    expect(updated).toBeDefined();
     expect(updated!.favorito).toBe(false);
   });
 });

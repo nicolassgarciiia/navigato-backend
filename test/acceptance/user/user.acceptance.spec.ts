@@ -61,7 +61,7 @@ describe("HU01 – Registro de usuario (ATDD)", () => {
     expect(result).toBeDefined();
     expect(result.correo).toBe(email);
 
-    // Verificación directa en Supabase (opcional pero muy buena)
+    // Verificación directa en Supabase
     const { data } = await supabaseAdmin.auth.admin.listUsers();
     const userInSupabase = data.users.find((u) => u.email === email);
 
@@ -102,6 +102,7 @@ describe("HU01 – Registro de usuario (ATDD)", () => {
   // ======================================
   test("HU01_E03 – Contraseña inválida", async () => {
     const email = `hu01-e03-${randomUUID()}@test.com`;
+    emailsToDelete.push(email);
 
     await expect(
       service.register({
@@ -119,6 +120,9 @@ describe("HU01 – Registro de usuario (ATDD)", () => {
   // HU01_E04 – Email con formato inválido
   // ======================================
   test("HU01_E04 – Email con formato inválido", async () => {
+    const email = `hu01-e04-${randomUUID()}@test.com`;
+    emailsToDelete.push(email);
+
     await expect(
       service.register({
         nombre: "Prueba",
@@ -136,6 +140,7 @@ describe("HU01 – Registro de usuario (ATDD)", () => {
   // ======================================
   test("HU01_E05 – Contraseñas no coinciden", async () => {
     const email = `hu01-e05-${randomUUID()}@test.com`;
+    emailsToDelete.push(email);
 
     await expect(
       service.register({
@@ -154,6 +159,7 @@ describe("HU01 – Registro de usuario (ATDD)", () => {
   // ======================================
   test("HU01_E06 – Datos personales incompletos", async () => {
     const email = `hu01-e06-${randomUUID()}@test.com`;
+    emailsToDelete.push(email);
 
     await expect(
       service.register({
@@ -172,6 +178,7 @@ describe("HU01 – Registro de usuario (ATDD)", () => {
   // ======================================
   test("HU01_E07 – Política no aceptada", async () => {
     const email = `hu01-e07-${randomUUID()}@test.com`;
+    emailsToDelete.push(email);
 
     await expect(
       service.register({

@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   UseFilters,
+  Req
 } from "@nestjs/common";
 import { POIService } from "./application/poi.service";
 import { CreatePOIDto } from "./dto/create-poi.dto";
@@ -49,4 +50,17 @@ export class POIController {
     await this.poiService.deletePOI(correo, id);
     return { ok: true };
   }
+
+@Post(":id/favorite")
+async toggleFavorite(@Param("id") id: string, @Body("correo") correo: string) {
+  await this.poiService.togglePoiFavorite(correo, id);
+  return { ok: true };
+}
+
+
+
+
+
+
+
 }

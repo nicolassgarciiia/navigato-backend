@@ -4,7 +4,7 @@ import { VehicleModule } from "../../../src/modules/vehicle/vehicle.module";
 import { VehicleService } from "../../../src/modules/vehicle/application/vehicle.service";
 import { UserService } from "../../../src/modules/user/application/user.service";
 import * as dotenv from "dotenv";
-import { TEST_EMAIL} from "../../helpers/test-constants";
+import { TEST_EMAIL, TEST_PASSWORD } from "../../helpers/test-constants";
 
 dotenv.config();
 
@@ -23,6 +23,19 @@ describe("HU09 – Alta de vehículo (ATDD)", () => {
     vehicleService = moduleRef.get(VehicleService);
     userService = moduleRef.get(UserService);
 
+    // 🔐 Asegurar usuario de test (UNA SOLA VEZ)
+    const existing = await userService.findByEmail(TEST_EMAIL);
+
+    if (!existing) {
+      await userService.register({
+        nombre: "Usuario",
+        apellidos: "Test ATDD",
+        correo: TEST_EMAIL,
+        contraseña: TEST_PASSWORD,
+        repetirContraseña: TEST_PASSWORD,
+        aceptaPoliticaPrivacidad: true,
+      });
+    }
   });
 
   // ==================================================
@@ -33,6 +46,7 @@ describe("HU09 – Alta de vehículo (ATDD)", () => {
       try {
         await vehicleService.delete(vehicleId);
       } catch {
+        // limpieza best-effort
       }
     }
     vehicleIdsToDelete = [];

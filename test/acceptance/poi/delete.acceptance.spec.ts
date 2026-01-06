@@ -3,10 +3,9 @@ import { POIModule } from "../../../src/modules/poi/poi.module";
 import { POIService } from "../../../src/modules/poi/application/poi.service";
 import { UserModule } from "../../../src/modules/user/user.module";
 import { UserService } from "../../../src/modules/user/application/user.service";
-import { POI } from "../../../src/modules/poi/domain/poi.entity";
 import * as dotenv from "dotenv";
 import { PlaceOfInterestNotFoundError } from "../../../src/modules/poi/domain/errors";
-import { TEST_EMAIL} from "../../helpers/test-constants";
+import { TEST_EMAIL, TEST_PASSWORD } from "../../helpers/test-constants";
 
 dotenv.config();
 
@@ -24,6 +23,19 @@ describe("HU08 – Eliminar Lugar de Interés (ATDD)", () => {
     poiService = moduleRef.get(POIService);
     userService = moduleRef.get(UserService);
 
+    // 🔐 Asegurar usuario de test (UNA SOLA VEZ)
+    const user = await userService.findByEmail(TEST_EMAIL);
+
+    if (!user) {
+      await userService.register({
+        nombre: "Usuario",
+        apellidos: "Test ATDD",
+        correo: TEST_EMAIL,
+        contraseña: TEST_PASSWORD,
+        repetirContraseña: TEST_PASSWORD,
+        aceptaPoliticaPrivacidad: true,
+      });
+    }
   });
 
   // ==================================================
@@ -34,6 +46,7 @@ describe("HU08 – Eliminar Lugar de Interés (ATDD)", () => {
       try {
         await poiService.delete(poiId);
       } catch {
+        // limpieza best-effort
       }
     }
     poiIdsToDelete = [];
@@ -43,7 +56,7 @@ describe("HU08 – Eliminar Lugar de Interés (ATDD)", () => {
   // HU08_E01 – Eliminación exitosa
   // ======================================================
   test("HU08_E01 – Eliminación exitosa del lugar", async () => {
-    const poiToDelete: POI = await poiService.createPOI(
+    const poiToDelete = await poiService.createPOI(
       TEST_EMAIL,
       "Lugar para Borrar",
       40.4167,
@@ -51,7 +64,7 @@ describe("HU08 – Eliminar Lugar de Interés (ATDD)", () => {
     );
     poiIdsToDelete.push(poiToDelete.id);
 
-    const backupPoi: POI = await poiService.createPOI(
+    const backupPoi = await poiService.createPOI(
       TEST_EMAIL,
       "Lugar de Respaldo",
       39.4699,
@@ -59,14 +72,24 @@ describe("HU08 – Eliminar Lugar de Interés (ATDD)", () => {
     );
     poiIdsToDelete.push(backupPoi.id);
 
+    // ACT
     await poiService.deletePOI(TEST_EMAIL, poiToDelete.id);
 
-    poiIdsToDelete = poiIdsToDelete.filter(id => id !== poiToDelete.id);
+    // evitar doble borrado en afterEach
+    poiIdsToDelete = poiIdsToDelete.filter(
+      id => id !== poiToDelete.id
+    );
 
+    // ASSERT
     const poisAfterDeletion = await poiService.listByUser(TEST_EMAIL);
 
-    expect(poisAfterDeletion.find(p => p.id === poiToDelete.id)).toBeUndefined();
-    expect(poisAfterDeletion.find(p => p.id === backupPoi.id)).toBeDefined();
+    expect(
+      poisAfterDeletion.find(p => p.id === poiToDelete.id)
+    ).toBeUndefined();
+
+    expect(
+      poisAfterDeletion.find(p => p.id === backupPoi.id)
+    ).toBeDefined();
   });
 
   // ======================================================

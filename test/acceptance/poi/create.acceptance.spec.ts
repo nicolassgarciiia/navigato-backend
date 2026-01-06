@@ -4,9 +4,8 @@ import { POIService } from "../../../src/modules/poi/application/poi.service";
 import { UserModule } from "../../../src/modules/user/user.module";
 import { UserService } from "../../../src/modules/user/application/user.service";
 import * as dotenv from "dotenv";
-import { TEST_EMAIL} from "../../helpers/test-constants";
+import { TEST_EMAIL, TEST_PASSWORD } from "../../helpers/test-constants";
 import { randomUUID } from "crypto";
-
 
 dotenv.config();
 
@@ -24,6 +23,19 @@ describe("HU05 – Alta de POI con coordenadas (ATDD)", () => {
     poiService = moduleRef.get(POIService);
     userService = moduleRef.get(UserService);
 
+    // 🔐 Asegurar usuario de test (UNA SOLA VEZ)
+    const user = await userService.findByEmail(TEST_EMAIL);
+
+    if (!user) {
+      await userService.register({
+        nombre: "Usuario",
+        apellidos: "Test ATDD",
+        correo: TEST_EMAIL,
+        contraseña: TEST_PASSWORD,
+        repetirContraseña: TEST_PASSWORD,
+        aceptaPoliticaPrivacidad: true,
+      });
+    }
   });
 
   // ==================================================
@@ -34,6 +46,7 @@ describe("HU05 – Alta de POI con coordenadas (ATDD)", () => {
       try {
         await poiService.delete(poiId);
       } catch {
+        // limpieza best-effort
       }
     }
     poiIdsToDelete = [];
@@ -44,8 +57,9 @@ describe("HU05 – Alta de POI con coordenadas (ATDD)", () => {
   // ======================================
   test("HU05_E01 – Alta de POI con coordenadas válidas", async () => {
     const poiName = `Casa-${randomUUID()}`;
+
     const poi = await poiService.createPOI(
-    TEST_EMAIL,
+      TEST_EMAIL,
       poiName,
       39.9869,
       -0.0513
@@ -54,7 +68,7 @@ describe("HU05 – Alta de POI con coordenadas (ATDD)", () => {
     poiIdsToDelete.push(poi.id);
 
     expect(poi).toBeDefined();
-    expect(poi.nombre).toContain(poiName);
+    expect(poi.nombre).toBe(poiName);
     expect(poi.latitud).toBe(39.9869);
     expect(poi.longitud).toBe(-0.0513);
     expect(poi.toponimo).toBeDefined();
@@ -66,6 +80,7 @@ describe("HU05 – Alta de POI con coordenadas (ATDD)", () => {
   // ======================================
   test("HU05_E02 – Coordenadas fuera de rango", async () => {
     const poiName = `Trabajo-${randomUUID()}`;
+
     await expect(
       poiService.createPOI(
         TEST_EMAIL,

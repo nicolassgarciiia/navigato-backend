@@ -21,11 +21,15 @@ describe("HU04 – Eliminar cuenta de usuario (ATDD)", () => {
     service = moduleRef.get(UserService);
   });
 
+  // ======================================================
+  // Limpieza defensiva (por si algún test falla antes)
+  // ======================================================
   afterEach(async () => {
     for (const email of emailsToDelete) {
       try {
         await service.deleteByEmail(email);
       } catch {
+        // limpieza best-effort
       }
     }
     emailsToDelete = [];
@@ -38,7 +42,7 @@ describe("HU04 – Eliminar cuenta de usuario (ATDD)", () => {
     const email = `hu04-e01-${randomUUID()}@test.com`;
     emailsToDelete.push(email);
 
-    // 1. Crear usuario
+    // ARRANGE → crear usuario
     await service.register({
       nombre: "Activo",
       apellidos: "García Edo",
@@ -48,17 +52,17 @@ describe("HU04 – Eliminar cuenta de usuario (ATDD)", () => {
       aceptaPoliticaPrivacidad: true,
     });
 
-    // 2. Eliminar cuenta (acción que se prueba)
+    // ACT → eliminar cuenta
     const result = await service.deleteAccount(email);
 
-    // 3. Validaciones
+    // ASSERT
     expect(result).toBeDefined();
-    expect(result?.correo).toBe(email);
+    expect(result.correo).toBe(email);
 
-    // 4. El usuario ya no debe existir
     const deleted = await service.findByEmail(email);
     expect(deleted).toBeNull();
 
+    // ya no hay nada que limpiar
     emailsToDelete = [];
   });
 
@@ -68,7 +72,8 @@ describe("HU04 – Eliminar cuenta de usuario (ATDD)", () => {
   test("HU04_E02 – Usuario no existe → error", async () => {
     const email = `hu04-no-existe-${randomUUID()}@test.com`;
 
-    await expect(service.deleteAccount(email))
-      .rejects.toThrow("UserNotFoundError");
+    await expect(
+      service.deleteAccount(email)
+    ).rejects.toThrow("UserNotFoundError");
   });
 });

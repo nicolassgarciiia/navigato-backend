@@ -5,6 +5,7 @@ import { VehicleService } from "../../../src/modules/vehicle/application/vehicle
 import { UserService } from "../../../src/modules/user/application/user.service";
 import * as dotenv from "dotenv";
 import { TEST_EMAIL, TEST_PASSWORD } from "../../helpers/test-constants";
+import * as crypto from "crypto";
 
 dotenv.config();
 
@@ -13,6 +14,7 @@ describe("HU12 – Modificar vehículo (ATDD)", () => {
   let userService: UserService;
 
   let vehicleIdsToDelete: string[] = [];
+  let userId: string;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -22,13 +24,34 @@ describe("HU12 – Modificar vehículo (ATDD)", () => {
     vehicleService = moduleRef.get(VehicleService);
     userService = moduleRef.get(UserService);
 
+    // 🔐 Asegurar usuario de test (UNA SOLA VEZ)
+    const user = await userService.findByEmail(TEST_EMAIL);
+
+    if (!user) {
+      await userService.register({
+        nombre: "Usuario",
+        apellidos: "Test ATDD",
+        correo: TEST_EMAIL,
+        contraseña: TEST_PASSWORD,
+        repetirContraseña: TEST_PASSWORD,
+        aceptaPoliticaPrivacidad: true,
+      });
+      const created = await userService.findByEmail(TEST_EMAIL);
+      userId = created!.id;
+    } else {
+      userId = user.id;
+    }
   });
 
+  // ==================================================
+  // Limpieza SOLO de los vehículos creados en el test
+  // ==================================================
   afterEach(async () => {
     for (const id of vehicleIdsToDelete) {
       try {
         await vehicleService.delete(id);
       } catch {
+        // limpieza best-effort
       }
     }
     vehicleIdsToDelete = [];
@@ -51,7 +74,7 @@ describe("HU12 – Modificar vehículo (ATDD)", () => {
       vehicleService.updateVehicle(TEST_EMAIL, vehicle.id, { consumo: 5.4 })
     ).resolves.toBeUndefined();
 
-    const vehicles = await vehicleService.listByUser(TEST_EMAIL);
+    const vehicles = await vehicleService.listByUser({ id: userId });
     const updated = vehicles.find((v) => v.id === vehicle.id);
 
     expect(updated).toBeDefined();
@@ -72,10 +95,14 @@ describe("HU12 – Modificar vehículo (ATDD)", () => {
     vehicleIdsToDelete.push(vehicle.id);
 
     await expect(
-      vehicleService.updateVehicle(TEST_EMAIL, vehicle.id, { nombre: "Coche nuevo" })
+      vehicleService.updateVehicle(
+        TEST_EMAIL,
+        vehicle.id,
+        { nombre: "Coche nuevo" }
+      )
     ).resolves.toBeUndefined();
 
-    const vehicles = await vehicleService.listByUser(TEST_EMAIL);
+    const vehicles = await vehicleService.listByUser({ id: userId });
     const updated = vehicles.find((v) => v.id === vehicle.id);
 
     expect(updated).toBeDefined();
@@ -105,7 +132,11 @@ describe("HU12 – Modificar vehículo (ATDD)", () => {
   // ======================================
   test("HU12_E04 – Usuario no autenticado", async () => {
     await expect(
-      vehicleService.updateVehicle("no-existe@test.com", "vehiculo-id", { consumo: 5 })
+      vehicleService.updateVehicle(
+        "no-existe@test.com",
+        crypto.randomUUID(),
+        { consumo: 5 }
+      )
     ).rejects.toThrow("AuthenticationRequiredError");
   });
 
@@ -114,7 +145,11 @@ describe("HU12 – Modificar vehículo (ATDD)", () => {
   // ======================================
   test("HU12_E05 – Vehículo no existe", async () => {
     await expect(
-      vehicleService.updateVehicle(TEST_EMAIL, "vehiculo-inexistente", { consumo: 5 })
+      vehicleService.updateVehicle(
+        TEST_EMAIL,
+        crypto.randomUUID(),
+        { consumo: 5 }
+      )
     ).rejects.toThrow("VehicleNotFoundError");
   });
 });
