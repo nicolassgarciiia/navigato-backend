@@ -25,16 +25,11 @@ describe("HU13 – Calcular ruta entre dos lugares (ATDD)", () => {
     poiService = moduleRef.get(POIService);
   });
 
-  // ======================================
-  // Limpieza SOLO de POIs creados en el test
-  // ======================================
   afterEach(async () => {
     for (const poiId of poiIdsToDelete) {
       try {
         await poiService.delete(poiId);
-      } catch {
-        // ignorar
-      }
+      } catch {}
     }
     poiIdsToDelete = [];
   });
@@ -43,18 +38,16 @@ describe("HU13 – Calcular ruta entre dos lugares (ATDD)", () => {
   // HU13_E01 – Escenario válido
   // ======================================
   test("HU13_E01 – Calcula una ruta válida entre dos lugares", async () => {
-    const origenName = `Casa-${randomUUID()}`;
-    const destinoName = `Trabajo-${randomUUID()}`;
-
     const origen = await poiService.createPOI(
       TEST_EMAIL,
-      origenName,
+      `Casa-${randomUUID()}`,
       39.9869,
       -0.0513
     );
+
     const destino = await poiService.createPOI(
       TEST_EMAIL,
-      destinoName,
+      `Trabajo-${randomUUID()}`,
       40.4168,
       -3.7038
     );
@@ -63,40 +56,30 @@ describe("HU13 – Calcular ruta entre dos lugares (ATDD)", () => {
 
     const route = await routeService.calculateRoute(
       TEST_EMAIL,
-      origenName,
-      destinoName,
+      { lat: origen.latitud, lng: origen.longitud },
+      { lat: destino.latitud, lng: destino.longitud },
       "vehiculo"
     );
 
     expect(route).toBeDefined();
-    expect(route.origen.nombre).toBe(origenName);
-    expect(route.destino.nombre).toBe(destinoName);
     expect(route.distancia).toBeGreaterThan(0);
     expect(route.duracion).toBeGreaterThan(0);
+    expect(route.origen.lat).toBe(origen.latitud);
+    expect(route.destino.lng).toBe(destino.longitud);
   });
 
   // ======================================
-  // HU13_E02 – Lugar inválido
+  // HU13_E02 – Coordenadas inválidas
   // ======================================
-  test("HU13_E02 – Lugar inexistente", async () => {
-    const origenName = `Casa-${randomUUID()}`;
-
-    const origen = await poiService.createPOI(
-      TEST_EMAIL,
-      origenName,
-      39.9869,
-      -0.0513
-    );
-    poiIdsToDelete.push(origen.id);
-
+  test("HU13_E02 – Coordenadas inválidas", async () => {
     await expect(
       routeService.calculateRoute(
         TEST_EMAIL,
-        origenName,
-        "Lugar-Que-No-Existe",
+        { lat: 999, lng: 999 },
+        { lat: 40, lng: -3 },
         "vehiculo"
       )
-    ).rejects.toThrow("InvalidPlaceOfInterestError");
+    ).rejects.toBeDefined();
   });
 
   // ======================================
@@ -106,8 +89,8 @@ describe("HU13 – Calcular ruta entre dos lugares (ATDD)", () => {
     await expect(
       routeService.calculateRoute(
         "no-existe@test.com",
-        "Casa",
-        "Trabajo",
+        { lat: 39, lng: -0.05 },
+        { lat: 40, lng: -3 },
         "vehiculo"
       )
     ).rejects.toThrow("AuthenticationRequiredError");

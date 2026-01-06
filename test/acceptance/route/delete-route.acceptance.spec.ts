@@ -18,6 +18,9 @@ describe("HU19 – Elimina ruta guardada (ATDD)", () => {
   const email = `hu19_${crypto.randomUUID()}@test.com`;
   const password = "ValidPass1!";
 
+  let origen: any;
+  let destino: any;
+
   // ======================================
   // SETUP
   // ======================================
@@ -39,13 +42,24 @@ describe("HU19 – Elimina ruta guardada (ATDD)", () => {
       aceptaPoliticaPrivacidad: true,
     });
 
-    await poiService.createPOI(email, "Casa HU19", 39.9869, -0.0513);
-    await poiService.createPOI(email, "Trabajo HU19", 40.4168, -3.7038);
+    origen = await poiService.createPOI(
+      email,
+      "Casa HU19",
+      39.9869,
+      -0.0513
+    );
+
+    destino = await poiService.createPOI(
+      email,
+      "Trabajo HU19",
+      40.4168,
+      -3.7038
+    );
 
     await routeService.calculateRoute(
       email,
-      "Casa HU19",
-      "Trabajo HU19",
+      { lat: origen.latitud, lng: origen.longitud },
+      { lat: destino.latitud, lng: destino.longitud },
       "vehiculo"
     );
 
@@ -60,12 +74,10 @@ describe("HU19 – Elimina ruta guardada (ATDD)", () => {
   // HU19_E01 – Escenario válido
   // ======================================
   test("HU19_E01 – Elimina una ruta guardada existente", async () => {
-    // Act
     await expect(
       routeService.delete(email, "Ruta HU19")
     ).resolves.toBeUndefined();
 
-    // Assert → comprobamos que ya no existe
     const routes = await routeService.listSavedRoutes(email);
     const deleted = routes.find(r => r.nombre === "Ruta HU19");
     expect(deleted).toBeUndefined();
@@ -77,6 +89,6 @@ describe("HU19 – Elimina ruta guardada (ATDD)", () => {
   test("HU19_E02 – No se puede eliminar una ruta que no existe", async () => {
     await expect(
       routeService.delete(email, "Ruta inexistente")
-    ).rejects.toThrow("RouteNotFoundError");
+    ).rejects.toThrow("SavedRouteNotFoundError");
   });
 });

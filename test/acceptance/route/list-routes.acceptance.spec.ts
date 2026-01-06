@@ -41,13 +41,25 @@ describe("HU18 – Lista rutas guardadas (ATDD)", () => {
     });
 
     // POIs
-    await poiService.createPOI(email, "Casa HU18", 39.9869, -0.0513);
-    await poiService.createPOI(email, "Trabajo HU18", 40.4168, -3.7038);
-
-    await routeService.calculateRoute(
+    const origen = await poiService.createPOI(
       email,
       "Casa HU18",
+      39.9869,
+      -0.0513
+    );
+
+    const destino = await poiService.createPOI(
+      email,
       "Trabajo HU18",
+      40.4168,
+      -3.7038
+    );
+
+    // 🔑 CAMBIO IMPORTANTE: coordenadas
+    await routeService.calculateRoute(
+      email,
+      { lat: origen.latitud, lng: origen.longitud },
+      { lat: destino.latitud, lng: destino.longitud },
       "vehiculo"
     );
 

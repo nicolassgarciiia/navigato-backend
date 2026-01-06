@@ -27,7 +27,6 @@ describe("ROUTE – ATDD / Integration", () => {
     userService = moduleRef.get(UserService);
     poiService = moduleRef.get(POIService);
     routeService = moduleRef.get(RouteService);
-
   });
 
   afterEach(async () => {
@@ -50,37 +49,60 @@ describe("ROUTE – ATDD / Integration", () => {
   // HU13 – Calcular ruta
   // ======================================================
   test("HU13_E01 – Calcula ruta entre dos POIs", async () => {
-    const origen = await poiService.createPOI(TEST_EMAIL, "R_ORIGEN", 41.38, 2.17);
-    const destino = await poiService.createPOI(TEST_EMAIL, "R_DESTINO", 41.39, 2.18);
+    const origen = await poiService.createPOI(
+      TEST_EMAIL,
+      "R_ORIGEN",
+      41.38,
+      2.17
+    );
+    const destino = await poiService.createPOI(
+      TEST_EMAIL,
+      "R_DESTINO",
+      41.39,
+      2.18
+    );
     poiIdsToDelete.push(origen.id, destino.id);
 
     const route = await routeService.calculateRoute(
       TEST_EMAIL,
-      "R_ORIGEN",
-      "R_DESTINO",
-      "car"
+      { lat: origen.latitud, lng: origen.longitud },
+      { lat: destino.latitud, lng: destino.longitud },
+      "vehiculo"
     );
 
     expect(route).toBeDefined();
-    expect(route.distancia).toBeDefined();
+    expect(route.distancia).toBeGreaterThan(0);
   });
 
   // ======================================================
   // HU17 – Guardar ruta
   // ======================================================
   test("HU17_E01 – Guarda la última ruta calculada", async () => {
-    const origen = await poiService.createPOI(TEST_EMAIL, "S_ORIGEN", 41.40, 2.19);
-    const destino = await poiService.createPOI(TEST_EMAIL, "S_DESTINO", 41.41, 2.20);
+    const origen = await poiService.createPOI(
+      TEST_EMAIL,
+      "S_ORIGEN",
+      41.40,
+      2.19
+    );
+    const destino = await poiService.createPOI(
+      TEST_EMAIL,
+      "S_DESTINO",
+      41.41,
+      2.20
+    );
     poiIdsToDelete.push(origen.id, destino.id);
 
     await routeService.calculateRoute(
       TEST_EMAIL,
-      "S_ORIGEN",
-      "S_DESTINO",
-      "car"
+      { lat: origen.latitud, lng: origen.longitud },
+      { lat: destino.latitud, lng: destino.longitud },
+      "vehiculo"
     );
 
-    const saved = await routeService.saveRoute(TEST_EMAIL, "Ruta Casa-Trabajo");
+    const saved = await routeService.saveRoute(
+      TEST_EMAIL,
+      "Ruta Casa-Trabajo"
+    );
     savedRouteNamesToDelete.push(saved.nombre);
 
     expect(saved).toBeDefined();
@@ -97,18 +119,31 @@ describe("ROUTE – ATDD / Integration", () => {
   // HU18 – Listar rutas guardadas
   // ======================================================
   test("HU18_E01 – Lista rutas guardadas", async () => {
-    const origen = await poiService.createPOI(TEST_EMAIL, "L_ORIGEN", 41.42, 2.21);
-    const destino = await poiService.createPOI(TEST_EMAIL, "L_DESTINO", 41.43, 2.22);
+    const origen = await poiService.createPOI(
+      TEST_EMAIL,
+      "L_ORIGEN",
+      41.42,
+      2.21
+    );
+    const destino = await poiService.createPOI(
+      TEST_EMAIL,
+      "L_DESTINO",
+      41.43,
+      2.22
+    );
     poiIdsToDelete.push(origen.id, destino.id);
 
     await routeService.calculateRoute(
       TEST_EMAIL,
-      "L_ORIGEN",
-      "L_DESTINO",
-      "car"
+      { lat: origen.latitud, lng: origen.longitud },
+      { lat: destino.latitud, lng: destino.longitud },
+      "vehiculo"
     );
 
-    const saved = await routeService.saveRoute(TEST_EMAIL, "Ruta Lista");
+    const saved = await routeService.saveRoute(
+      TEST_EMAIL,
+      "Ruta Lista"
+    );
     savedRouteNamesToDelete.push(saved.nombre);
 
     const routes = await routeService.listSavedRoutes(TEST_EMAIL);
@@ -120,21 +155,40 @@ describe("ROUTE – ATDD / Integration", () => {
   // HU19 – Eliminar ruta guardada
   // ======================================================
   test("HU19_E01 – Elimina ruta guardada", async () => {
-    const origen = await poiService.createPOI(TEST_EMAIL, "D_ORIGEN", 41.44, 2.23);
-    const destino = await poiService.createPOI(TEST_EMAIL, "D_DESTINO", 41.45, 2.24);
+    const origen = await poiService.createPOI(
+      TEST_EMAIL,
+      "D_ORIGEN",
+      41.44,
+      2.23
+    );
+    const destino = await poiService.createPOI(
+      TEST_EMAIL,
+      "D_DESTINO",
+      41.45,
+      2.24
+    );
     poiIdsToDelete.push(origen.id, destino.id);
 
     await routeService.calculateRoute(
       TEST_EMAIL,
-      "D_ORIGEN",
-      "D_DESTINO",
-      "car"
+      { lat: origen.latitud, lng: origen.longitud },
+      { lat: destino.latitud, lng: destino.longitud },
+      "vehiculo"
     );
 
-    const saved = await routeService.saveRoute(TEST_EMAIL, "Ruta Borrar");
-    await routeService.deleteSavedRoute(TEST_EMAIL, saved.nombre);
+    const saved = await routeService.saveRoute(
+      TEST_EMAIL,
+      "Ruta Borrar"
+    );
+
+    await routeService.deleteSavedRoute(
+      TEST_EMAIL,
+      saved.nombre
+    );
 
     const routes = await routeService.listSavedRoutes(TEST_EMAIL);
-    expect(routes.find(r => r.nombre === saved.nombre)).toBeUndefined();
+    expect(
+      routes.find(r => r.nombre === saved.nombre)
+    ).toBeUndefined();
   });
 });

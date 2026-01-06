@@ -37,7 +37,7 @@ export class VehicleService {
     tipo: "COMBUSTION" | "ELECTRICO",
     consumo: number
   ): Promise<Vehicle> {
-    const user = await this.getAuthenticatedUser(userEmail);
+    const user = await this.getUserByEmail(userEmail);
 
     this.validateConsumption(consumo);
 
@@ -56,15 +56,26 @@ export class VehicleService {
   // ======================================================
   // HU10 – Listado de vehículos del usuario
   // ======================================================
-  async listByUser(userEmail: string): Promise<Vehicle[]> {
-    const user = await this.getAuthenticatedUser(userEmail);
+  async listByUser(authUser: any): Promise<Vehicle[]> {
+  const userId = authUser?.id;
 
-    try {
-      return await this.vehicleRepository.findByUser(user.id);
-    } catch {
-      throw new DatabaseConnectionError();
-    }
+  if (!userId) {
+    throw new AuthenticationRequiredError();
   }
+
+  const user = await this.userRepository.findById(userId);
+  if (!user) {
+    throw new AuthenticationRequiredError();
+  }
+
+  try {
+    return await this.vehicleRepository.findByUser(user.id);
+  } catch {
+    throw new DatabaseConnectionError();
+  }
+}
+
+
 
   // ======================================================
   // HU11 – Borrado de vehículo
@@ -108,7 +119,7 @@ async toggleVehicleFavorite(
   userEmail: string,
   vehicleId: string
 ): Promise<void> {
-  const user = await this.getAuthenticatedUser(userEmail);
+  const user = await this.getUserByEmail(userEmail);
 
   const vehicle = await this.vehicleRepository.findByIdAndUser(
     vehicleId,
@@ -134,19 +145,22 @@ async toggleVehicleFavorite(
   // Helpers privados
   // ======================================================
 
-  private async getAuthenticatedUser(userEmail: string) {
-    const user = await this.userRepository.findByEmail(userEmail);
-    if (!user) {
-      throw new AuthenticationRequiredError();
-    }
-    return user;
+  private async getUserByEmail(email: string) {
+  const user = await this.userRepository.findByEmail(email);
+
+  if (!user) {
+    throw new AuthenticationRequiredError(); // 
   }
+
+  return user;
+}
+
 
   private async getUserVehicleOrFail(
     userEmail: string,
     vehicleId: string
   ): Promise<Vehicle> {
-    const user = await this.getAuthenticatedUser(userEmail);
+    const user = await this.getUserByEmail(userEmail);
 
     let vehicle: Vehicle | null;
     try {

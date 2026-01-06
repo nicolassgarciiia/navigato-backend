@@ -2,25 +2,37 @@ import {
   Controller,
   Put,
   Body,
+  UseGuards,
+  Get,
+  Req
 } from "@nestjs/common";
-import { UserPreferencesService } from "../../../src/modules/user-preferences/application/user-preferences.service";
+import { UserPreferencesService } from "./application/user-preferences.service";
+import { SupabaseAuthGuard } from "src/auth/supabase-auth.guard";
 
+@UseGuards(SupabaseAuthGuard)
 @Controller("user-preferences")
 export class UserPreferencesController {
   constructor(
     private readonly userPreferencesService: UserPreferencesService
   ) {}
 
+
+  @UseGuards(SupabaseAuthGuard)
+  @Get()
+  async getPreferences(@Req() req) {
+    return this.userPreferencesService.getByUser(req.user.email);
+  }
+
   // ==================================================
   // HU21 – Establecer vehículo por defecto
   // ==================================================
   @Put("default-vehicle")
   async setDefaultVehicle(
-    @Body("email") email: string,
+    @Req() req,
     @Body("vehicleId") vehicleId: string
-  ): Promise<void> {
+  ) {
     await this.userPreferencesService.setDefaultVehicle(
-      email,
+      req.user.email,
       vehicleId
     );
   }
@@ -29,12 +41,13 @@ export class UserPreferencesController {
   // ==================================================
   @Put("default-route-type")
   async setDefaultRouteType(
-    @Body("email") email: string,
+    @Req() req,
     @Body("routeType") routeType: string
-  ): Promise<void> {
+  ) {
     await this.userPreferencesService.setDefaultRouteType(
-      email,
+      req.user.email,
       routeType
     );
   }
+
 }

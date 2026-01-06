@@ -30,15 +30,13 @@ describe("HU14 – Calcular coste de ruta en vehículo (ATDD)", () => {
     poiService = moduleRef.get(POIService);
   });
 
-  // ======================================
-  // Limpieza SOLO de datos creados en el test
-  // ======================================
   afterEach(async () => {
     for (const poiId of poiIdsToDelete) {
       try {
         await poiService.delete(poiId);
       } catch {}
     }
+
     for (const vehicleId of vehicleIdsToDelete) {
       try {
         await vehicleService.delete(vehicleId);
@@ -49,28 +47,12 @@ describe("HU14 – Calcular coste de ruta en vehículo (ATDD)", () => {
     vehicleIdsToDelete = [];
   });
 
-  // ======================================
-  // HU14_E01 – Escenario válido
-  // ======================================
   test("HU14_E01 – Calcula el coste de combustible de una ruta", async () => {
-    const origenName = `Casa-${randomUUID()}`;
-    const destinoName = `Trabajo-${randomUUID()}`;
     const vehicleName = `Coche-${randomUUID()}`;
 
-    // POIs
-    const origen = await poiService.createPOI(
-      TEST_EMAIL,
-      origenName,
-      39.9869,
-      -0.0513
-    );
-    const destino = await poiService.createPOI(
-      TEST_EMAIL,
-      destinoName,
-      40.4168,
-      -3.7038
-    );
-    poiIdsToDelete.push(origen.id, destino.id);
+    // Coordenadas reales (Valencia → Madrid)
+    const origen = { lat: 39.9869, lng: -0.0513 };
+    const destino = { lat: 40.4168, lng: -3.7038 };
 
     // Vehículo
     const vehicle = await vehicleService.createVehicle(
@@ -82,11 +64,11 @@ describe("HU14 – Calcular coste de ruta en vehículo (ATDD)", () => {
     );
     vehicleIdsToDelete.push(vehicle.id);
 
-    // Ruta
+    // Ruta (IMPORTANTE: ahora usa coordenadas)
     await routeService.calculateRoute(
       TEST_EMAIL,
-      origenName,
-      destinoName,
+      origen,
+      destino,
       "vehiculo"
     );
 

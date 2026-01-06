@@ -61,8 +61,8 @@ describe("HU15 – Calcular coste calórico de una ruta (ATDD)", () => {
 
     await routeService.calculateRoute(
       TEST_EMAIL,
-      origenName,
-      destinoName,
+      { lat: origen.latitud, lng: origen.longitud },
+      { lat: destino.latitud, lng: destino.longitud },
       "pie"
     );
 

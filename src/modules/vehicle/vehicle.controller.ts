@@ -7,11 +7,15 @@ import {
   Delete,
   Param,
   Put,
+  Req,
+  UseGuards
 } from "@nestjs/common";
 import { VehicleService } from "./application/vehicle.service";
 import { UpdateVehicleDto } from "./dto/update-vehicle.dto";
+import { SupabaseAuthGuard } from "src/auth/supabase-auth.guard";
 
 @Controller("vehicles")
+@UseGuards(SupabaseAuthGuard)
 export class VehicleController {
   constructor(private readonly vehicleService: VehicleService) {}
 
@@ -28,13 +32,17 @@ export class VehicleController {
       body.consumo
     );
   }
+
+  
   // =====================================================
   // HU10 – Listar vehículos
   // =====================================================
   @Get()
-  async list(@Query("correo") correo: string) {
-    return this.vehicleService.listByUser(correo);
+  async list(@Req() req: any) {
+    console.log("REQ.USER: ", req.user);
+    return this.vehicleService.listByUser(req.user);
   }
+
   // =====================================================
   // HU11 – Borrado de vehículo
   // =====================================================

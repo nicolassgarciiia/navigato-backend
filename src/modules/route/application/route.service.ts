@@ -10,11 +10,9 @@ import { SavedRoute } from "../domain/saved-route.entity";
 import {
   AuthenticationRequiredError,
   RouteNotCalculatedError,
-  InvalidPlaceOfInterestError,
   VehicleNotFoundError,
   NameAlreadyExistsError,
   SavedRouteNotFoundError,
-  RoutingServiceUnavailableError,
   FuelServiceUnavailableError,
   CalorieServiceUnavailableError,
   InvalidRouteTypeError,
@@ -22,19 +20,14 @@ import {
 
 import { FuelCostStrategy } from "../infrastructure/strategies/fuel-cost.strategy";
 import { CalorieCostStrategy } from "../infrastructure/strategies/calorie-cost.strategy";
-import { FastestRouteStrategy } from "../infrastructure/strategies/fastest-route.strategy";
-import { ShortestRouteStrategy } from "../infrastructure/strategies/shortest-route.strategy";
-import { EconomicRouteStrategy } from "../infrastructure/strategies/economic-route.strategy";
-
+import { UserPreferencesService } from "src/modules/user-preferences/application/user-preferences.service";
+type RouteType = "rapida" | "corta" | "economica";
 @Injectable()
 export class RouteService {
   private lastCalculatedRoutes = new Map<string, Route>();
 
   private fuelCostStrategy = new FuelCostStrategy();
   private calorieCostStrategy = new CalorieCostStrategy();
-  private fastestRouteStrategy = new FastestRouteStrategy();
-  private shortestRouteStrategy = new ShortestRouteStrategy();
-  private economicRouteStrategy = new EconomicRouteStrategy();
 
 
   constructor(
@@ -42,6 +35,7 @@ export class RouteService {
     private readonly poiRepository: POIRepository,
     private readonly vehicleRepository: VehicleRepository,
     private readonly routeRepository: RouteRepository,
+    private readonly userPreferencesService: UserPreferencesService,
     @Inject("RoutingAdapter")
     private readonly routingAdapter: RoutingAdapter
   ) {}
@@ -57,6 +51,7 @@ export class RouteService {
   ): Promise<Route> {
     const user = await this.userRepository.findByEmail(email);
     if (!user) throw new AuthenticationRequiredError();
+    
 
     const route = await this.routingAdapter.calculate(origen, destino, metodo);
 
@@ -152,51 +147,64 @@ async calculateRouteByType(
   origen: { lat: number; lng: number },
   destino: { lat: number; lng: number },
   metodo: string,
-  tipo: "rapida" | "corta" | "economica"
+  tipo?: "rapida" | "corta" | "economica"
 ): Promise<Route> {
-  if (!email) throw new AuthenticationRequiredError();
-
-  try {
-    let route: Route;
-
-    switch (tipo) {
-      case "rapida":
-        route = await this.fastestRouteStrategy.calculate(
-          origen,
-          destino,
-          metodo,
-          this.routingAdapter
-        );
-        break;
-
-      case "corta":
-        route = await this.shortestRouteStrategy.calculate(
-          origen,
-          destino,
-          metodo,
-          this.routingAdapter
-        );
-        break;
-
-      case "economica":
-        route = await this.economicRouteStrategy.calculate(
-          origen,
-          destino,
-          metodo,
-          this.routingAdapter
-        );
-        break;
-
-      default:
-        throw new InvalidRouteTypeError();
-    }
-
-    this.lastCalculatedRoutes.set(email, route);
-    return route;
-  } catch {
-    throw new RoutingServiceUnavailableError();
+  const user = await this.userRepository.findByEmail(email);
+  if (!user) {
+    throw new AuthenticationRequiredError();
   }
+
+  // 1 Obtener preferencias
+  const preferences =
+    await this.userPreferencesService.getByUser(email);
+
+  // 2 Resolver tipo final
+  let tipoFinal: RouteType;
+
+  if (tipo) {
+    tipoFinal = tipo;
+  } else if (
+    preferences.defaultRouteType === "rapida" ||
+    preferences.defaultRouteType === "corta" ||
+    preferences.defaultRouteType === "economica"
+  ) {
+    tipoFinal = preferences.defaultRouteType;
+  } else {
+    tipoFinal = "economica";
+  }
+
+  // 3 Mapear a ORS preference
+  let orsPreference: "fastest" | "shortest" | "recommended";
+
+  switch (tipoFinal) {
+    case "rapida":
+      orsPreference = "fastest";
+      break;
+    case "corta":
+      orsPreference = "shortest";
+      break;
+    case "economica":
+    default:
+      orsPreference = "recommended";
+      break;
+  }
+
+  // 4 Llamar al adapter (AQUÍ está la diferencia real)
+  const route = await this.routingAdapter.calculate(
+    origen,
+    destino,
+    metodo,
+    orsPreference
+  );
+
+  // 5 Marcar tipo en la entidad
+  route.tipo = tipoFinal;
+
+  this.lastCalculatedRoutes.set(user.id, route);
+  return route;
 }
+
+
 
 
 

@@ -5,6 +5,6 @@ export interface RoutingAdapter {
     origen: { lat: number; lng: number },
     destino: { lat: number; lng: number },
     metodo: string,
-    tipo?: "rapida" | "corta" | "economica"
+    preference?: "fastest" | "shortest" | "recommended"
   ): Promise<Route>;
 }
